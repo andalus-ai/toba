@@ -41,9 +41,9 @@ class EngineContractsTest {
         var page = new EngineResultPage(java.util.List.of(
                 new EngineResultPage.Column("optional", "VARCHAR")),
                 java.util.List.of(row), 0, false);
-        assertTrue(page.rows().getFirst().containsKey("optional"));
-        assertNull(page.rows().getFirst().get("optional"));
+        assertTrue(page.rows().get(0).containsKey("optional"));
+        assertNull(page.rows().get(0).get("optional"));
         assertThrows(UnsupportedOperationException.class,
-                () -> page.rows().getFirst().put("x", "y"));
+                () -> page.rows().get(0).put("x", "y"));
     }
 }
