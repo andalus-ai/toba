@@ -47,6 +47,11 @@
   </properties>
 
   <dependencies>
+    <dependency>
+      <groupId>com.dremioplatform</groupId>
+      <artifactId>toba-engine-spi</artifactId>
+      <version>${project.version}</version>
+    </dependency>
     <!-- gRPC client for identity-access-service's AuthCheckService -->
     <dependency>
       <groupId>io.grpc</groupId>
