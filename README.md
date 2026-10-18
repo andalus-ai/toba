@@ -1,16 +1,17 @@
-# Dremio Reactive Platform
+# Toba Lakehouse Platform
 
-Enterprise-capability layer for [`dremio-oss`](https://github.com/dremio/dremio-oss),
-built as independently-deployable Quarkus reactive microservices sitting alongside an
-unmodified Dremio OSS cluster (strangler-fig, not a fork). Full architecture rationale,
-feature-gap analysis, and phased roadmap: see `dremio-reactive-extension-plan.md`.
+**Toba is an independent, engine-agnostic, agentic lakehouse control plane.** It owns identity, authorization, governance, catalog services, workload orchestration, audit, semantic data intelligence and agent tools. Dremio OSS is the first execution backend—not Toba's product identity or a permanent engine lock-in.
+
+Toba and Andalus BI remain separate products. Andalus BI owns dashboard authoring, visualization and AI-assisted analytics; it integrates with Toba through stable platform APIs. Other applications can consume Toba without deploying BI.
+
+Architecture and roadmap: `toba-extension-plan.md`. The engine contract is documented in `docs/architecture/engine-strategy.md`.
 
 ## Repo layout
 
 ```
-dremio-reactive-platform/
+toba-lakehouse-platform/
 ├── pom.xml                          root aggregator + shared build config
-├── platform-bom/                    internal BOM: shared contract/library versions
+├── engine-spi/                     dependency-free Java 17 multi-engine execution contract\n├── platform-bom/                    internal BOM: shared contract/library versions
 ├── platform-common/                 shared RFC 7807 error model, base exceptions
 ├── identity-access-service/         Phase 1 — RBAC, JWT issuance, PATs, service accounts
 ├── governance-lineage-service/      Phase 2 — masking policies, lineage graph, audit trail
@@ -35,7 +36,7 @@ filled by [bhangun/iket](https://github.com/bhangun/iket) instead.
 | workload-orchestrator-service | ✅ | ✅ | ✅ | ✅ | ✅ Kafka publisher + K8s client + idle-stop + queue-depth scale-up schedulers | 🟡 started |
 | semantic-ai-service | ✅ | ✅ | ✅ | ✅ | ✅ Kafka consumer + authenticated/authorized MCP server | 🟡 started |
 
-All five planned phases (Section 11) now have a running implementation. Each
+The service modules have initial implementations, but repository documentation and source still contain known gaps. Treat each module's status table and the enterprise-readiness roadmap as the source of truth; a module existing does not mean its production guarantees are complete. Each
 module's README has the precise per-layer status table and a "Known gaps" section —
 read that before assuming a module is spec-complete or production-ready. Worth
 flagging at the root level:
