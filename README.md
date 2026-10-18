@@ -43,14 +43,14 @@ Treat these modules as an active engineering prototype, not as a production-read
 ## Build order
 
 Each service is built in the same layer order, one continuation prompt at a time,
-so every increment is production-quality rather than scaffolded-and-abandoned:
+to make each increment testable; production readiness is only claimed after its security and integration gates pass:
 
 `domain model → repository layer → service layer → REST/gRPC layer → tests`
 
 ## Local build
 
 ```bash
-mvn -pl platform-bom,platform-common,identity-access-service,governance-lineage-service,catalog-service,dremio-adapter,workload-orchestrator-service,semantic-ai-service -am install
+mvn -pl engine-spi,platform-bom,platform-common,identity-access-service,governance-lineage-service,catalog-service,dremio-adapter,workload-orchestrator-service,semantic-ai-service -am verify
 ```
 
 Run any service individually:
