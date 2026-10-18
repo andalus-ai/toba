@@ -50,10 +50,12 @@ IdentityProviderConfig  (standalone; referenced by User.identityProviderId)
   `CreatePatResponse`, and never logged.
 - **REST** (`resource/`) — JAX-RS reactive resources per aggregate, plus
   `PlatformExceptionMapper` translating every `PlatformException` into the shared
-  RFC 7807 body from `platform-common`. **Note:** actor identity is read from an
-  `X-Actor-Id` header in this scaffold as a placeholder — real request-scoped
-  identity (from the validated JWT/PAT) is wired in as part of the security-context
-  work, not before the REST layer ships. Don't treat this header as authenticated.
+  RFC 7807 body from `platform-common`. **Security warning:** the `/api/v1` REST management surface now requires a
+  verified authenticated request, but actor identity is still read from the
+  caller-controlled `X-Actor-Id` header. Authentication alone does not make that
+  header trustworthy. **Do not deploy this management API as production-safe**
+  until resource methods derive the actor from `SecurityIdentity` and enforce
+  the required permissions and tenant boundaries.
 - **gRPC** (`grpc/`, `proto/auth_check.proto`) — `AuthCheckService`: the inline
   call the `dremio-adapter`'s `AccessControlChecker` implementation makes on every
   coordinator request. `CheckPermission`/`CheckPermissions` fail closed (return
@@ -75,6 +77,15 @@ manual DB/Kafka setup needed for local development or for running the test suite
 ```bash
 mvn -pl identity-access-service -am test
 ```
+
+## P1 authentication boundary
+
+The `/api/v1` REST surface now requires authentication using Quarkus HTTP
+permissions. A regression test checks anonymous access and attempts to spoof
+`X-Actor-Id` without a token. This does **not** fix authenticated actor spoofing:
+resource methods still need to remove their dependence on `X-Actor-Id` and
+resolve the actor from a verified security principal. Existing unauthenticated
+REST tests will need to supply test identities. Build and tests are not yet run.
 
 ## Known gaps / next continuation prompts
 
