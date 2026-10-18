@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>com.dremioplatform</groupId>
+  <artifactId>dremio-reactive-platform</artifactId>
+  <version>0.1.0-SNAPSHOT</version>
+  <packaging>pom</packaging>
+
+  <name>Dremio Reactive Platform</name>
+  <description>
+    Enterprise-capability layer for Dremio OSS, built as independently-deployable
+    Quarkus reactive microservices (strangler-fig pattern around dremio-oss core).
+  </description>
+
+  <properties>
+    <maven.compiler.release>21</maven.compiler.release>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <quarkus.platform.group-id>io.quarkus.platform</quarkus.platform.group-id>
+    <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
+    <quarkus.platform.version>3.15.1</quarkus.platform.version>
+    <compiler-plugin.version>3.13.0</compiler-plugin.version>
+    <surefire-plugin.version>3.2.5</surefire-plugin.version>
+
+    <!-- shared dependency versions, referenced by every module -->
+    <mapstruct.version>1.6.0</mapstruct.version>
+    <testcontainers.version>1.20.1</testcontainers.version>
+
+    <!-- dremio-adapter is deliberately NOT built against the Quarkus BOM (see its
+         pom.xml/README) since it runs inside Dremio's own coordinator JVM/classpath,
+         not as a standalone Quarkus app. Pinned here instead. -->
+    <grpc.version>1.65.1</grpc.version>
+    <protobuf.version>3.25.3</protobuf.version>
+
+    <!-- Quarkiverse extension, not part of the Quarkus platform BOM — pinned here
+         for semantic-ai-service. -->
+    <quarkus.langchain4j.version>0.21.2</quarkus.langchain4j.version>
+    <!-- Verified current stable release per quarkus.io/extensions/io.quarkiverse.mcp/quarkus-mcp-server-http (June 2026). -->
+    <quarkus.mcp.server.version>1.13.0</quarkus.mcp.server.version>
+    <!-- Verified current stable release per iceberg.apache.org/releases (2026-05-19). -->
+    <iceberg.version>1.11.0</iceberg.version>
+    <!-- Verified current stable release per aws/aws-sdk-java-v2's own README and
+         Maven Central (2026-06-08). -->
+    <awssdk.version>2.46.6</awssdk.version>
+  </properties>
+
+  <!--
+    Modules are added incrementally, one per implementation phase (see
+    dremio-reactive-extension-plan.md, Section 11).
+
+    Phase 0 (this commit):
+      - platform-bom          shared internal BOM (protobuf/event contracts, common libs)
+      - platform-common       shared reactive utilities, problem-details error model, CDI qualifiers
+      - identity-access-service   Phase 1 service (domain layer scaffolded first)
+
+    Added in later phases (not yet scaffolded):
+      - governance-lineage-service
+      - catalog-service
+      - workload-orchestrator-service
+      - semantic-ai-service
+      - api-gateway
+      - dremio-adapter (thin adapter jar compiled against dremio-oss SPIs)
+  -->
+  <modules>
+    <module>platform-bom</module>
+    <module>platform-common</module>
+    <module>identity-access-service</module>
+    <module>governance-lineage-service</module>
+    <module>catalog-service</module>
+    <module>dremio-adapter</module>
+    <module>workload-orchestrator-service</module>
+    <module>semantic-ai-service</module>
+  </modules>
+
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>${quarkus.platform.group-id}</groupId>
+        <artifactId>${quarkus.platform.artifact-id}</artifactId>
+        <version>${quarkus.platform.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <dependency>
+        <groupId>com.dremioplatform</groupId>
+        <artifactId>platform-bom</artifactId>
+        <version>${project.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+
+  <build>
+    <pluginManagement>
+      <plugins>
+        <plugin>
+          <groupId>${quarkus.platform.group-id}</groupId>
+          <artifactId>quarkus-maven-plugin</artifactId>
+          <version>${quarkus.platform.version}</version>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-compiler-plugin</artifactId>
+          <version>${compiler-plugin.version}</version>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-surefire-plugin</artifactId>
+          <version>${surefire-plugin.version}</version>
+          <configuration>
+            <systemPropertyVariables>
+              <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
+            </systemPropertyVariables>
+          </configuration>
+        </plugin>
+      </plugins>
+    </pluginManagement>
+  </build>
+</project>

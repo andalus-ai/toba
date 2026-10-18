@@ -1,0 +1,75 @@
+syntax = "proto3";
+
+package com.dremioplatform.identity.grpc;
+
+option java_package = "com.dremioplatform.identity.grpc";
+option java_multiple_files = true;
+
+// Called inline by the dremio-adapter's AccessControlChecker implementation on
+// every Dremio coordinator request that needs an authz decision. Kept as a single
+// round trip (not "fetch roles, then fetch permissions") because this sits on the
+// hot query path — see Section 6 of dremio-reactive-extension-plan.md ("Synchronous
+// calls: gRPC ... for latency-sensitive paths Dremio's coordinator calls inline").
+service AuthCheckService {
+  // Resolves every permission the principal holds at requestedPath (via itself or
+  // any ancestor scope) and reports whether requiredPermission is among them.
+  rpc CheckPermission (CheckPermissionRequest) returns (CheckPermissionResponse);
+
+  // Bulk variant for plan-time checks that need several permissions resolved at
+  // once (e.g. checking read access to every table referenced in a query's plan)
+  // without one round trip per table.
+  rpc CheckPermissions (CheckPermissionsRequest) returns (CheckPermissionsResponse);
+
+  // Validates a bearer credential (JWT or PAT) and returns the resolved principal.
+  // The dremio-adapter calls this once per request to establish identity, then
+  // CheckPermission/CheckPermissions for each authz decision within that request.
+  rpc ResolvePrincipal (ResolvePrincipalRequest) returns (ResolvePrincipalResponse);
+}
+
+enum PrincipalType {
+  PRINCIPAL_TYPE_UNSPECIFIED = 0;
+  USER = 1;
+  SERVICE_ACCOUNT = 2;
+}
+
+message CheckPermissionRequest {
+  PrincipalType principal_type = 1;
+  string principal_id = 2;      // UUID, string-encoded
+  string requested_path = 3;    // e.g. "space.sales.folder.q4.dataset.orders"
+  string required_permission = 4; // e.g. "catalog.dataset.read"
+}
+
+message CheckPermissionResponse {
+  bool allowed = 1;
+}
+
+message CheckPermissionsRequest {
+  PrincipalType principal_type = 1;
+  string principal_id = 2;
+  // Each entry checked independently against the same principal.
+  repeated PathPermissionPair checks = 3;
+}
+
+message PathPermissionPair {
+  string requested_path = 1;
+  string required_permission = 2;
+}
+
+message CheckPermissionsResponse {
+  // Same order/length as the request's `checks` list.
+  repeated bool results = 1;
+}
+
+message ResolvePrincipalRequest {
+  // Either a bearer JWT or a raw PAT (e.g. "pat_xxx") — the service distinguishes
+  // by format, since JWTs are self-describing (three dot-separated segments) and
+  // PATs use the "pat_" prefix.
+  string credential = 1;
+}
+
+message ResolvePrincipalResponse {
+  bool valid = 1;
+  PrincipalType principal_type = 2;
+  string principal_id = 3;
+  string display_name = 4;
+}

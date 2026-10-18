@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>com.dremioplatform</groupId>
+    <artifactId>dremio-reactive-platform</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+  </parent>
+
+  <artifactId>catalog-service</artifactId>
+  <name>Catalog Service</name>
+  <description>
+    Phase 3 microservice. Implements the Apache Iceberg REST Catalog spec
+    (https://iceberg.apache.org/spec/#rest-catalog) — the single highest-leverage
+    service per the plan (Section 5.3), since it's a spec-compliant, greenfield
+    build rather than a Dremio-internal integration. Dremio OSS attaches to it the
+    same way it attaches to any Iceberg REST catalog today (its IcebergRestCatalog
+    StoragePlugin already ships in OSS) — no core changes needed, only this server.
+
+    Build order for this module:
+      1. Domain model + migration              <- this commit
+      2. Repository layer                      <- this commit
+      3. Service layer                         <- this commit
+      4. REST layer (core Iceberg REST subset)  <- this commit
+      5. Time travel (snapshot list/rollback)   — not yet built
+      6. Auto-optimize/compaction (RewriteDataFiles/ExpireSnapshots scheduled jobs) — not yet built
+      7. Tests — not yet built
+
+    Scope note: increment 4 implements config/namespace/table CRUD and a minimal
+    load-table-metadata response — enough for Dremio to attach and browse the
+    catalog. Full Iceberg TableMetadata JSON fidelity (schemas, partition specs,
+    sort orders) and the commit-transaction endpoint are NOT yet implemented — see
+    module README "Known gaps" before treating this as spec-complete.
+  </description>
+
+  <dependencies>
+    <dependency>
+      <groupId>com.dremioplatform</groupId>
+      <artifactId>platform-common</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-rest-jackson</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-rest</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-smallrye-openapi</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-hibernate-reactive-panache</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-reactive-pg-client</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-flyway</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-jdbc-postgresql</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-messaging-kafka</artifactId>
+    </dependency>
+
+    <!-- Real Iceberg TableMetadata construction/serialization — verified current
+         stable release (1.11.0, released 2026-05-19) against Maven Central and
+         Apache Iceberg's own release notes before pinning. Brings in iceberg-api
+         transitively (Schema, PartitionSpec, SortOrder live there). -->
+    <dependency>
+      <groupId>org.apache.iceberg</groupId>
+      <artifactId>iceberg-core</artifactId>
+      <version>${iceberg.version}</version>
+    </dependency>
+
+    <!-- Real S3-compatible object storage backend (works against AWS S3, MinIO,
+         or any S3-compatible endpoint via quarkus.s3.endpoint-override — see
+         storage/S3ObjectStorageClient). Plain AWS SDK v2, not a Quarkus extension —
+         avoided io.quarkiverse.amazonservices:quarkus-amazon-s3 here specifically
+         because its BOM version compatibility with this project's pinned Quarkus
+         platform version (3.15.1) couldn't be verified without a live build in
+         this environment; the plain SDK has its own independent versioning and a
+         well-documented, stable synchronous client (url-connection-client) that
+         doesn't need Quarkus-specific alignment. -->
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>s3</artifactId>
+      <version>${awssdk.version}</version>
+      <exclusions>
+        <exclusion>
+          <groupId>software.amazon.awssdk</groupId>
+          <artifactId>netty-nio-client</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>software.amazon.awssdk</groupId>
+          <artifactId>apache-client</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>url-connection-client</artifactId>
+      <version>${awssdk.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-hibernate-validator</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-micrometer-registry-prometheus</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-opentelemetry</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-junit5</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.rest-assured</groupId>
+      <artifactId>rest-assured</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>postgresql</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.mockito</groupId>
+      <artifactId>mockito-core</artifactId>
+      <version>5.12.0</version>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>${quarkus.platform.group-id}</groupId>
+        <artifactId>quarkus-maven-plugin</artifactId>
+        <extensions>true</extensions>
+        <executions>
+          <execution>
+            <goals>
+              <goal>build</goal>
+              <goal>generate-code</goal>
+              <goal>generate-code-tests</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+</project>

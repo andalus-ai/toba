@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>com.dremioplatform</groupId>
+    <artifactId>dremio-reactive-platform</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+  </parent>
+
+  <artifactId>semantic-ai-service</artifactId>
+  <name>Semantic AI Service</name>
+  <description>
+    Phase 5 microservice. Owns: dataset/column embeddings + semantic search,
+    AI-generated wiki/label suggestions (human-approved, never auto-applied),
+    SQL-callable AI functions (AI_SUMMARIZE/AI_CLASSIFY), and an MCP tool surface
+    for agent access to the governed catalog. Closes the plan's AI Semantic Layer
+    gap (Section 5.5).
+
+    Build order for this module:
+      1. Domain model + migration (pgvector-backed embeddings) <- this commit
+      2. Repository layer (incl. native pgvector similarity search) <- this commit
+      3. Service layer (embedding pipeline, wiki suggestions, AI functions) <- this commit
+      4. REST layer <- this commit
+      5. Kafka consumer: catalog.events -> auto-embed new tables <- this commit
+      6. MCP tool surface <- this commit (tool definitions; real MCP transport wiring — see README)
+      7. Tests — started
+
+    LLM provider: pluggable via LlmClient (llm/), with a real quarkus-langchain4j
+    Anthropic-backed implementation and a deterministic mock implementation used
+    whenever no API key is configured (default for local dev/tests — see
+    ai.mock-mode in application.properties and llm/MockLlmClient's Javadoc).
+  </description>
+
+  <dependencies>
+    <dependency>
+      <groupId>com.dremioplatform</groupId>
+      <artifactId>platform-common</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-rest-jackson</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-rest</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-smallrye-openapi</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-hibernate-reactive-panache</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-reactive-pg-client</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-flyway</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-jdbc-postgresql</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-messaging-kafka</artifactId>
+    </dependency>
+
+    <!-- LLM orchestration — real chat provider, used only when ai.mock-mode=false and
+         an API key is configured. See llm/ package. -->
+    <dependency>
+      <groupId>io.quarkiverse.langchain4j</groupId>
+      <artifactId>quarkus-langchain4j-anthropic</artifactId>
+      <version>${quarkus.langchain4j.version}</version>
+    </dependency>
+
+    <!-- Real embedding provider. Anthropic has no public embeddings API (see
+         llm/LlmClient's Javadoc), so embeddings route through OpenAI's
+         text-embedding-3-small instead when ai.embedding.provider=openai. This is
+         a legitimate "mix providers" setup — chat and embeddings don't have to come
+         from the same vendor, and the plan explicitly calls for "bring your own
+         model" pluggability (Section 5.5). -->
+    <dependency>
+      <groupId>io.quarkiverse.langchain4j</groupId>
+      <artifactId>quarkus-langchain4j-openai</artifactId>
+      <version>${quarkus.langchain4j.version}</version>
+    </dependency>
+
+    <!-- Real MCP server transport (Streamable HTTP) — closes the plan's Section 5.5
+         "MCP server / agent tools" gap for real. @Tool-annotated methods in mcp/
+         are discovered at build time; no manual JSON-RPC wiring needed. -->
+    <dependency>
+      <groupId>io.quarkiverse.mcp</groupId>
+      <artifactId>quarkus-mcp-server-http</artifactId>
+      <version>${quarkus.mcp.server.version}</version>
+    </dependency>
+
+    <!-- Verifies the same platform JWTs identity-access-service issues (see that
+         service's TokenService) — secures the MCP endpoint and REST API alike via
+         standard Quarkus Security (@RolesAllowed/@Authenticated), rather than
+         standing up a separate OIDC provider for this one service. -->
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-smallrye-jwt</artifactId>
+    </dependency>
+
+    <!-- gRPC client for identity-access-service's real AuthCheckService — reused
+         here for per-tool MCP authorization rather than building new authz logic.
+         See mcp/McpAuthorizationService's Javadoc. -->
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-grpc</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-hibernate-validator</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-micrometer-registry-prometheus</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-opentelemetry</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-junit5</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.rest-assured</groupId>
+      <artifactId>rest-assured</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>postgresql</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-smallrye-jwt-build</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>${quarkus.platform.group-id}</groupId>
+        <artifactId>quarkus-maven-plugin</artifactId>
+        <extensions>true</extensions>
+        <executions>
+          <execution>
+            <goals>
+              <goal>build</goal>
+              <goal>generate-code</goal>
+              <goal>generate-code-tests</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+</project>

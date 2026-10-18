@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>com.dremioplatform</groupId>
+    <artifactId>dremio-reactive-platform</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+  </parent>
+
+  <artifactId>dremio-adapter</artifactId>
+  <name>Dremio Adapter</name>
+  <packaging>jar</packaging>
+  <description>
+    The thin jar that actually wires Dremio OSS to everything else in this repo
+    (plan Section 7, "Integration Points with Dremio OSS Core (no fork required)").
+    Compiled against dremio-oss's SPI interfaces and dropped onto the Dremio
+    coordinator's classpath as a plugin — NOT deployed as its own service.
+
+    DELIBERATELY DOES NOT DEPEND ON QUARKUS. This jar's classes load inside Dremio's
+    own coordinator JVM, sharing its classpath and dependency versions (Guava, Netty,
+    Jackson, etc. — all pinned by dremio-oss's own BOM, which this module does not
+    control). Pulling in Quarkus's dependency tree here risks classpath/version
+    conflicts with Dremio's own libraries. Every other service in this repo is a
+    separate deployable Quarkus reactive microservice; this one is not a service at
+    all — it is a client of two of them (identity-access-service via gRPC,
+    governance-lineage-service via plain HTTP), packaged to run inside a third
+    party's process. See README for exactly how it's meant to be wired in.
+
+    IMPORTANT — read before treating the SPI interfaces here as real:
+    dremio-oss is not published to Maven Central under consumable coordinates (its
+    own artifacts, e.g. com.dremio:dremio-common, are only resolvable after building
+    dremio-oss from source locally — see https://github.com/dremio/dremio-oss).
+    This module therefore defines its own mirror interfaces under `spi/` shaped to
+    match the plan's description of Dremio's actual AccessControlChecker/StoragePlugin
+    SPI (Section 2, Section 7). Before deploying this adapter against a real Dremio
+    OSS build, replace the `spi/` mirror interfaces' imports with the real
+    `com.dremio.exec.store.*` / `com.dremio.exec.catalog.*` interfaces for your
+    target dremio-oss version and adjust method signatures to match exactly — treat
+    everything under `spi/` as a to-be-reconciled contract, not a verified one.
+  </description>
+
+  <properties>
+    <maven.compiler.release>17</maven.compiler.release>
+  </properties>
+
+  <dependencies>
+    <!-- gRPC client for identity-access-service's AuthCheckService -->
+    <dependency>
+      <groupId>io.grpc</groupId>
+      <artifactId>grpc-netty-shaded</artifactId>
+      <version>${grpc.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.grpc</groupId>
+      <artifactId>grpc-protobuf</artifactId>
+      <version>${grpc.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.grpc</groupId>
+      <artifactId>grpc-stub</artifactId>
+      <version>${grpc.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>jakarta.annotation</groupId>
+      <artifactId>jakarta.annotation-api</artifactId>
+      <version>2.1.1</version>
+    </dependency>
+
+    <!-- Plain HTTP client for governance-lineage-service's REST masking-policy
+         lookup — java.net.http (JDK built-in) is used instead in code, this
+         dependency list intentionally has no HTTP client library. -->
+
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <version>5.10.3</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.mockito</groupId>
+      <artifactId>mockito-core</artifactId>
+      <version>5.12.0</version>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <extensions>
+      <extension>
+        <groupId>kr.motd.maven</groupId>
+        <artifactId>os-maven-plugin</artifactId>
+        <version>1.7.1</version>
+      </extension>
+    </extensions>
+    <plugins>
+      <plugin>
+        <groupId>org.xolstice.maven.plugins</groupId>
+        <artifactId>protobuf-maven-plugin</artifactId>
+        <version>0.6.1</version>
+        <configuration>
+          <protocArtifact>com.google.protobuf:protoc:${protobuf.version}:exe:${os.detected.classifier}</protocArtifact>
+          <pluginId>grpc-java</pluginId>
+          <pluginArtifact>io.grpc:protoc-gen-grpc-java:${grpc.version}:exe:${os.detected.classifier}</pluginArtifact>
+        </configuration>
+        <executions>
+          <execution>
+            <goals>
+              <goal>compile</goal>
+              <goal>compile-custom</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <!-- Shades the gRPC/protobuf dependency tree into this jar under a relocated
+           package, since Dremio itself likely already ships some version of these
+           on its classpath (it uses gRPC internally for its RPC fabric — see plan
+           Section 2) and an unshaded duplicate risks a version clash. -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-shade-plugin</artifactId>
+        <version>3.6.0</version>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals>
+              <goal>shade</goal>
+            </goals>
+            <configuration>
+              <relocations>
+                <relocation>
+                  <pattern>io.grpc</pattern>
+                  <shadedPattern>com.dremioplatform.adapter.shaded.grpc</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>com.google.protobuf</pattern>
+                  <shadedPattern>com.dremioplatform.adapter.shaded.protobuf</shadedPattern>
+                </relocation>
+              </relocations>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+</project>
