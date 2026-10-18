@@ -5,14 +5,13 @@
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>com.dremioplatform</groupId>
-  <artifactId>dremio-reactive-platform</artifactId>
+  <artifactId>toba-lakehouse-platform</artifactId>
   <version>0.1.0-SNAPSHOT</version>
   <packaging>pom</packaging>
 
-  <name>Dremio Reactive Platform</name>
+  <name>Toba Lakehouse Platform</name>
   <description>
-    Enterprise-capability layer for Dremio OSS, built as independently-deployable
-    Quarkus reactive microservices (strangler-fig pattern around dremio-oss core).
+    Independent, engine-agnostic agentic lakehouse control plane with Dremio OSS as the first execution backend.
   </description>
 
   <properties>
@@ -48,22 +47,14 @@
 
   <!--
     Modules are added incrementally, one per implementation phase (see
-    dremio-reactive-extension-plan.md, Section 11).
+    toba-extension-plan.md, Section 11).
 
-    Phase 0 (this commit):
-      - platform-bom          shared internal BOM (protobuf/event contracts, common libs)
-      - platform-common       shared reactive utilities, problem-details error model, CDI qualifiers
-      - identity-access-service   Phase 1 service (domain layer scaffolded first)
-
-    Added in later phases (not yet scaffolded):
-      - governance-lineage-service
-      - catalog-service
-      - workload-orchestrator-service
-      - semantic-ai-service
-      - api-gateway
-      - dremio-adapter (thin adapter jar compiled against dremio-oss SPIs)
+    Platform modules: engine-spi (Java 17 stable execution contract), platform-bom,
+    platform-common, identity/access, governance/lineage, catalog, Dremio adapter,
+    workload orchestration, and semantic AI.
   -->
   <modules>
+    <module>engine-spi</module>
     <module>platform-bom</module>
     <module>platform-common</module>
     <module>identity-access-service</module>
