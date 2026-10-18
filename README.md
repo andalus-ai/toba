@@ -27,7 +27,7 @@ filled by [bhangun/iket](https://github.com/bhangun/iket) instead.
 
 ## Status snapshot
 
-| Service | Domain | Repo | Service | REST | gRPC/Events | Tests |
+| Service | Domain | Repo | Service | REST | gRPC/Events | Tests |\n|---|---|---|---|---|---|---|\n| engine-spi | ✅ contracts | n/a | n/a | n/a | n/a | 🟡 initial contract tests |
 |---|---|---|---|---|---|---|
 | identity-access-service | ✅ | ✅ | ✅ (incl. JWT issuance) | ✅ | ✅ gRPC AuthCheckService | 🟡 started |
 | governance-lineage-service | ✅ | ✅ | ✅ | ✅ | ✅ Kafka audit consumer | not started |
