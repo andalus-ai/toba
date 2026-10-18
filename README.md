@@ -11,7 +11,8 @@ Architecture and roadmap: `toba-extension-plan.md`. The engine contract is docum
 ```
 toba-lakehouse-platform/
 ├── pom.xml                          root aggregator + shared build config
-├── engine-spi/                     dependency-free Java 17 multi-engine execution contract\n├── platform-bom/                    internal BOM: shared contract/library versions
+├── engine-spi/                     dependency-free Java 17 multi-engine execution contract
+├── platform-bom/                    internal BOM: shared contract/library versions
 ├── platform-common/                 shared RFC 7807 error model, base exceptions
 ├── identity-access-service/         Phase 1 — RBAC, JWT issuance, PATs, service accounts
 ├── governance-lineage-service/      Phase 2 — masking policies, lineage graph, audit trail
@@ -27,63 +28,17 @@ filled by [bhangun/iket](https://github.com/bhangun/iket) instead.
 
 ## Status snapshot
 
-| Service | Domain | Repo | Service | REST | gRPC/Events | Tests |\n|---|---|---|---|---|---|---|\n| engine-spi | ✅ contracts | n/a | n/a | n/a | n/a | 🟡 initial contract tests |
-|---|---|---|---|---|---|---|
-| identity-access-service | ✅ | ✅ | ✅ (incl. JWT issuance) | ✅ | ✅ gRPC AuthCheckService | 🟡 started |
-| governance-lineage-service | ✅ | ✅ | ✅ | ✅ | ✅ Kafka audit consumer | not started |
-| catalog-service | ✅ | ✅ | ✅ (real Iceberg TableMetadata + real/opt-in S3 backend) | ✅ (core Iceberg REST subset) | ✅ Kafka publisher | 🟡 started |
-| dremio-adapter | n/a (plugin jar, not a service) | n/a | n/a | n/a | ✅ gRPC + HTTP clients wired | 🟡 started |
-| workload-orchestrator-service | ✅ | ✅ | ✅ | ✅ | ✅ Kafka publisher + K8s client + idle-stop + queue-depth scale-up schedulers | 🟡 started |
-| semantic-ai-service | ✅ | ✅ | ✅ | ✅ | ✅ Kafka consumer + authenticated/authorized MCP server | 🟡 started |
+| Component | Status | Important limitation |
+|---|---|---|
+| engine-spi | Initial Java 17 contracts and unit tests added in current PR | Dremio adapter implementation and conformance suite still pending |
+| identity-access-service | Initial identity/RBAC/PAT service exists | README records JWT issuance/principal resolution and real request identity as incomplete |
+| governance-lineage-service | Policy definitions, lineage and identity-event audit ingestion exist | Masking enforcement hook and tests remain incomplete |
+| catalog-service | Core Iceberg REST subset and real TableMetadata serialization exist | Commit transactions, snapshots/time travel, partition/sort evolution remain incomplete |
+| dremio-adapter | Client and SPI-mirror code exists | Real Dremio-side plugin implementation and version-pinned integration are not complete |
+| workload-orchestrator-service | Engine records, K8s scaling controls and schedulers exist | Real Dremio queue-depth telemetry and job-submission hook are missing |
+| semantic-ai-service | AI/MCP implementation exists | README says MCP is secured but REST endpoints remain unauthenticated; real catalog enrichment and integration tests remain |
 
-The service modules have initial implementations, but repository documentation and source still contain known gaps. Treat each module's status table and the enterprise-readiness roadmap as the source of truth; a module existing does not mean its production guarantees are complete. Each
-module's README has the precise per-layer status table and a "Known gaps" section —
-read that before assuming a module is spec-complete or production-ready. Worth
-flagging at the root level:
-
-- **catalog-service** now writes and reads REAL Apache Iceberg `TableMetadata` —
-  every API used (`SchemaParser`, `TableMetadata.newTableMetadata`,
-  `TableMetadataParser`) was verified against Iceberg 1.11.0's actual source
-  before use, same research technique as the `dremio-oss` reconciliation. Its
-  object-storage backend now has a real, opt-in S3-compatible option too
-  (`catalog.storage.backend=s3`, plain AWS SDK v2) alongside the local-disk
-  default — but that S3 client's API calls were checked against AWS's docs, not
-  tested against a live bucket (no S3-compatible endpoint was reachable in this
-  environment). Still simplified: always unpartitioned/unsorted, no
-  commit-transaction/snapshot endpoint — see `catalog-service/README.md`.
-- **dremio-adapter**'s `spi/` interfaces are now **partially verified** against
-  real `dremio-oss` source (a shallow `git clone --filter=blob:none` was used to
-  read actual interface signatures — see `dremio-adapter/RECONCILIATION_NOTES.md`).
-  Three findings so far: (1) the real access-control hook is
-  `StoragePlugin.hasAccessPermission` (per-source, impersonation-gated); (2) row/
-  column masking is confirmed edition-gated at the handler level in OSS, making the
-  plan's adapter-side Calcite-rewrite the only viable approach there; (3) custom
-  functions (for `AI_SUMMARIZE`/`AI_CLASSIFY`) DO have a genuine classpath-scanned
-  plugin mechanism (`PluggableFunctionRegistry`), but its real per-row execution
-  contract is synchronous/blocking with no batching hook — a real, tested HTTP
-  client with response caching exists (`ai/AiFunctionHttpClient`), but the actual
-  Dremio-side function implementation isn't built, and shouldn't be used for
-  batch-scale queries even once it is. Still unverified: the actual plugin
-  registration mechanism for `StoragePlugin`; none of the three real Dremio-side
-  classes are implemented yet (all three are "go build it" work now, not "go find
-  it" research).
-- **workload-orchestrator-service** now implements both halves of auto-scaling —
-  idle-timeout scale-down (V1) and queue-depth-triggered scale-up (`ScaleUpScheduler`,
-  tested end-to-end via `ScaleUpFlowTest`). Its K8s client still defaults to a safe
-  no-op until explicitly enabled. What's still missing: real queue-depth data —
-  nothing yet reports genuine queue depth from an actual Dremio coordinator, same
-  gap `WlmQueueRuleService.resolveEngineFor` has been waiting on since V1.
-- **semantic-ai-service**: chat completion is real (Anthropic). Embeddings have a
-  real, opt-in option too (OpenAI's `text-embedding-3-small`, via
-  `ai.embedding.provider=openai` + `OPENAI_API_KEY`) — a deliberately different
-  vendor from chat, since Anthropic has no embeddings API. The MCP tool surface is
-  a **real, working, authenticated, and per-tool authorized MCP server**
-  (`quarkus-mcp-server-http` at `/mcp`, secured with the same platform JWTs
-  identity-access-service issues, gated per-call via a gRPC call to that same
-  service's real `AuthCheckService` — the same contract `dremio-adapter` calls).
-  The REST API remains unauthenticated, matching every other service in this repo.
-- **API Gateway**: intentionally not built — the person building this platform is
-  using [bhangun/iket](https://github.com/bhangun/iket) for that role instead.
+Treat these modules as an active engineering prototype, not as a production-ready enterprise distribution. The module READMEs and `docs/architecture/current-gaps.md` record the known gaps.
 
 ## Build order
 
