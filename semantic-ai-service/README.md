@@ -58,7 +58,8 @@ useful for exercising the pipeline mechanics, not for real semantic search quali
 - **MCP endpoint authentication** — `quarkus-smallrye-jwt` verifies the same
   platform JWTs `identity-access-service`'s `TokenService` issues (same issuer,
   same public key in dev). `/mcp` and `/mcp/*` require a valid Bearer token
-  (`quarkus.http.auth.permission.mcp`); every other path is unaffected. This is a
+  (`quarkus.http.auth.permission.mcp`). The `/api/v1` REST surface now also
+  requires an authenticated JWT (`quarkus.http.auth.permission.rest`). This is a
   standard Quarkus Security path-permission rule, not custom auth code — verified
   against the extension's actual sample (`quarkiverse/quarkus-mcp-server`'s
   `secure-mcp-sse-server` sample uses the same `quarkus-oidc`/JWT + path-permission
@@ -116,11 +117,10 @@ useful for exercising the pipeline mechanics, not for real semantic search quali
   `McpAuthorizationServiceTest` is a plain unit test with a mocked gRPC client;
   nothing exercises the real `/mcp` endpoint end-to-end against a live (or
   test-doubled) identity-access-service.
-- **REST API (`/api/v1/**`) is still unauthenticated**, same as every other
-  service in this repo — only the MCP endpoint got the auth treatment this round.
-  See `PersonalAccessTokenService`/`TokenService` in identity-access-service for
-  the platform's actual auth primitives, not yet consistently enforced across
-  every service's REST layer.
+- **REST API (`/api/v1/**`) now requires authentication**, but this is only
+  the first security boundary. Per-resource permission checks, workspace/tenant
+  scoping, and trusted service identities are not yet uniformly enforced. Do not
+  treat authenticated access as authorization to any dataset or AI function.
 - **Only 2 of the plan's "discover datasets and run governed queries" MCP tools
   exist** — `searchDatasets` and `getDatasetEmbeddings` cover discovery.
   "Run governed queries" is deliberately not a tool here — see
