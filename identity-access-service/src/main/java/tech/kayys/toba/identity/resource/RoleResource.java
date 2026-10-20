@@ -1,6 +1,7 @@
 package com.dremioplatform.identity.resource;
 
 import com.dremioplatform.identity.service.RoleService;
+import com.dremioplatform.security.IdentityManagementGuard;
 import com.dremioplatform.identity.service.dto.CreateRoleRequest;
 import com.dremioplatform.identity.service.dto.RoleResponse;
 import io.smallrye.mutiny.Uni;
@@ -26,27 +27,28 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 public class RoleResource {
 
     @Inject RoleService roleService;
+    @Inject IdentityManagementGuard guard;
 
     @POST
     public Uni<Response> create(@Valid CreateRoleRequest request) {
-        return roleService.createRole(request)
+        return guard.require("identity.role.manage").chain(actor -> roleService.createRole(request))
                 .map(role -> Response.status(Response.Status.CREATED).entity(role).build());
     }
 
     @GET
     @Path("/{id}")
     public Uni<RoleResponse> getById(@PathParam("id") UUID id) {
-        return roleService.getById(id);
+        return guard.require("identity.role.read").chain(actor -> roleService.getById(id));
     }
 
     @GET
     public Uni<List<RoleResponse>> listAll() {
-        return roleService.listAll();
+        return guard.require("identity.role.read").chain(actor -> roleService.listAll());
     }
 
     @DELETE
     @Path("/{id}")
     public Uni<Response> delete(@PathParam("id") UUID id) {
-        return roleService.deleteRole(id).map(v -> Response.noContent().build());
+        return guard.require("identity.role.manage").chain(actor -> roleService.deleteRole(id)).map(v -> Response.noContent().build());
     }
 }
