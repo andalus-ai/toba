@@ -29,7 +29,15 @@ public class RoleAssignmentService {
 
     @WithTransaction
     public Uni<RoleAssignmentResponse> grant(GrantRoleAssignmentRequest request, UUID actorUserId) {
-        return roleRepository.findById(request.roleId())
+        return resolveEffectivePermissions(PrincipalType.USER, actorUserId, request.scopePath())
+                .chain(actorPermissions -> rolePermissionRepository.findPermissionKeysForRole(request.roleId())
+                        .chain(rolePermissions -> {
+                            if (!actorPermissions.containsAll(rolePermissions)) {
+                                return Uni.createFrom().failure(new jakarta.ws.rs.WebApplicationException(
+                                        "Cannot delegate permissions not held at target scope", 403));
+                            }
+                            return roleRepository.findById(request.roleId());
+                        }))
                 .onItem().ifNull().failWith(() -> new EntityNotFoundException(
                         "IDENTITY-404-ROLE-NOT-FOUND", "Role", request.roleId()))
                 .chain(role -> {
