@@ -1,0 +1,20 @@
+sequenceDiagram
+  autonumber
+  actor User
+  participant Agent as Agent Planner
+  participant Engine as Farabi Engine
+  participant Policy as Governance
+  participant Viz as Chart / A2UI Specs
+  participant Repo as Artifact Repository
+  User->>Agent: Ask data question
+  Agent->>Engine: Proposed semantic intent
+  Engine->>Policy: Authorize and validate
+  Engine->>Engine: Execute governed query
+  Engine->>Viz: Create typed chart / UI specs
+  Viz-->>User: Dynamic exploration
+  User->>Engine: Promote selected view
+  Engine->>Policy: Reauthorize publish action
+  Engine->>Engine: Freeze layout, bindings and provenance
+  Engine->>Repo: Persist immutable dashboard version
+  Repo-->>User: Published artifact reference
+  Note over Engine,Repo: Refresh data separately; never mutate published definition

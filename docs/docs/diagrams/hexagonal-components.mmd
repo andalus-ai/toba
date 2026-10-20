@@ -1,0 +1,28 @@
+flowchart TB
+  subgraph Inbound[Inbound Adapters]
+    REST[Quarkus REST API]
+    Embedded[Embedded Java API]
+    Agent[Agent / A2UI Interaction]
+  end
+  subgraph Core[Farabi Engine - Pure Java]
+    UseCases[Application Use Cases]
+    Domain[Domain + Invariants]
+    Ports[Outbound Ports / SPI]
+    UseCases --> Domain
+    UseCases --> Ports
+  end
+  subgraph Outbound[Outbound Adapters]
+    Policy[Governance Adapter]
+    Semantic[Semantic Adapter]
+    Data[Toba / Dremio Adapter]
+    JDBC[JDBC Persistence Adapter]
+    Chart[Tenun Spec Mapper]
+    UI[Batik A2UI Mapper]
+    Audit[Audit / Event Adapter]
+  end
+  REST --> UseCases
+  Embedded --> UseCases
+  Agent --> UseCases
+  Ports --> Policy & Semantic & Data & JDBC & Chart & UI & Audit
+  Runtime[Quarkus Runtime / Composition Root] -. wires .-> REST
+  Runtime -. wires .-> Outbound

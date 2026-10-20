@@ -1,0 +1,28 @@
+sequenceDiagram
+  autonumber
+  actor User
+  participant API as Authenticated API
+  participant UC as Farabi Query Use Case
+  participant Policy as Policy Adapter
+  participant Sem as Semantic Compiler
+  participant DB as Query Repository
+  participant Exec as Toba / Dremio Adapter
+  User->>API: Request semantic query
+  API->>API: Derive trusted actor/workspace
+  API->>UC: Submit(request, actor)
+  UC->>Policy: Authorize actor + assets
+  Policy-->>UC: Allow / deny
+  UC->>Sem: Compile validated semantic plan
+  Sem-->>UC: Bounded query plan
+  UC->>DB: Persist PENDING intent
+  UC->>Exec: Submit compiled plan
+  alt Provider confirms acceptance
+    Exec-->>UC: Provider job ID
+    UC->>DB: CAS SUBMITTED + provider ID
+    UC-->>API: Execution ID and status
+  else Ambiguous timeout
+    Exec--xUC: Timeout / unknown acceptance
+    Note over UC,DB: Keep intent for investigation; do not blindly resubmit
+    UC-->>API: Indeterminate / retry guidance
+  end
+  API-->>User: Scoped response

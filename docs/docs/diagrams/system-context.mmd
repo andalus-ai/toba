@@ -1,0 +1,12 @@
+flowchart LR
+  Analyst[Analyst / Dashboard Author] --> Farabi[Farabi BI Platform]
+  Business[Business User] --> Farabi
+  Apps[Andalus / Embedded Java Apps] --> Engine[Farabi Engine Library]
+  Farabi --> Engine
+  Farabi --> Agent[Agent Provider Adapter]
+  Engine --> Toba[Toba Data Platform]
+  Toba --> Dremio[Dremio / Other Engines]
+  Farabi --> Tenun[Tenun Chart Renderer]
+  Farabi --> Batik[Batik A2UI Renderer]
+  Steward[Data Steward] --> Governance[Governance / Semantic Policy]
+  Governance --> Engine

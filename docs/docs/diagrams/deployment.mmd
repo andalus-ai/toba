@@ -1,0 +1,23 @@
+flowchart TB
+  subgraph Clients
+    Web[Web BI Studio - Tenun + Batik]
+    SDK[Embedded Java Host]
+  end
+  subgraph Quarkus[Default Farabi Quarkus Deployment]
+    API[Authenticated REST API]
+    Worker[Scheduled / Reconciliation Worker]
+    Runtime[Runtime Composition Root]
+  end
+  subgraph Core[Reusable Libraries]
+    Engine[Farabi Engine]
+    Adapters[Ports + Adapters]
+  end
+  Web --> API
+  SDK --> Engine
+  API --> Runtime --> Engine
+  Worker --> Runtime
+  Engine --> Adapters
+  Adapters --> PG[(PostgreSQL Metadata)]
+  Adapters --> Toba[Toba / Dremio]
+  Adapters --> Policy[Identity / Governance]
+  Adapters --> LLM[AI Provider]
