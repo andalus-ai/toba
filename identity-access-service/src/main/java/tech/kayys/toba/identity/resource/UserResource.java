@@ -1,6 +1,7 @@
 package com.dremioplatform.identity.resource;
 
 import com.dremioplatform.identity.service.UserService;
+import com.dremioplatform.security.IdentityManagementGuard;
 import com.dremioplatform.identity.service.dto.CreateUserRequest;
 import com.dremioplatform.identity.service.dto.UserResponse;
 import io.smallrye.mutiny.Uni;
@@ -36,36 +37,37 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 public class UserResource {
 
     @Inject UserService userService;
+    @Inject IdentityManagementGuard guard;
 
     @POST
     @Operation(summary = "Create a local or federated user")
     public Uni<Response> create(@Valid CreateUserRequest request, @HeaderParam("X-Actor-Id") UUID actorId) {
-        return userService.createUser(request, actorId)
+        return guard.require("identity.user.manage").chain(actor -> userService.createUser(request, actor))
                 .map(user -> Response.status(Response.Status.CREATED).entity(user).build());
     }
 
     @GET
     @Path("/{id}")
     public Uni<UserResponse> getById(@PathParam("id") UUID id) {
-        return userService.getById(id);
+        return guard.require("identity.user.read").chain(actor -> userService.getById(id));
     }
 
     @GET
     public Uni<List<UserResponse>> listAll() {
-        return userService.listAll();
+        return guard.require("identity.user.read").chain(actor -> userService.listAll());
     }
 
     @PUT
     @Path("/{id}/suspend")
     @Operation(summary = "Suspend a user (blocks login, preserves history)")
     public Uni<UserResponse> suspend(@PathParam("id") UUID id, @HeaderParam("X-Actor-Id") UUID actorId) {
-        return userService.suspendUser(id, actorId);
+        return guard.require("identity.user.manage").chain(actor -> userService.suspendUser(id, actor));
     }
 
     @DELETE
     @Path("/{id}")
     @Operation(summary = "Deprovision a user (SCIM-driven offboarding)")
     public Uni<UserResponse> deprovision(@PathParam("id") UUID id, @HeaderParam("X-Actor-Id") UUID actorId) {
-        return userService.deprovisionUser(id, actorId);
+        return guard.require("identity.user.manage").chain(actor -> userService.deprovisionUser(id, actor));
     }
 }
