@@ -1,6 +1,7 @@
 package com.dremioplatform.identity.resource;
 
 import com.dremioplatform.identity.service.ServiceAccountService;
+import com.dremioplatform.security.IdentityManagementGuard;
 import com.dremioplatform.identity.service.dto.CreateServiceAccountRequest;
 import com.dremioplatform.identity.service.dto.ServiceAccountResponse;
 import io.smallrye.mutiny.Uni;
@@ -26,21 +27,22 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 public class ServiceAccountResource {
 
     @Inject ServiceAccountService serviceAccountService;
+    @Inject IdentityManagementGuard guard;
 
     @POST
     public Uni<Response> create(@Valid CreateServiceAccountRequest request) {
-        return serviceAccountService.create(request)
+        return guard.require("identity.service-account.manage").chain(actor -> serviceAccountService.create(request))
                 .map(sa -> Response.status(Response.Status.CREATED).entity(sa).build());
     }
 
     @PUT
     @Path("/{id}/disable")
     public Uni<ServiceAccountResponse> disable(@PathParam("id") UUID id) {
-        return serviceAccountService.disable(id);
+        return guard.require("identity.service-account.manage").chain(actor -> serviceAccountService.disable(id));
     }
 
     @GET
     public Uni<List<ServiceAccountResponse>> listAll() {
-        return serviceAccountService.listAll();
+        return guard.require("identity.service-account.read").chain(actor -> serviceAccountService.listAll());
     }
 }
