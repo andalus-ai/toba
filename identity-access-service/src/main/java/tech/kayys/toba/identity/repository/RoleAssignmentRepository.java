@@ -46,7 +46,7 @@ public class RoleAssignmentRepository implements PanacheRepositoryBase<RoleAssig
         return find("principalType = ?1 and principalId = ?2", principalType, principalId).list();
     }
 
-    public Uni<Long> deleteByPrincipalAndRole(PrincipalType principalType, UUID principalId, UUID roleId) {
-        return delete("principalType = ?1 and principalId = ?2 and role.id = ?3", principalType, principalId, roleId);
+    public Uni<Long> deleteByPrincipalAndRole(PrincipalType principalType, UUID principalId, UUID roleId, String scopePath) {
+        return delete("principalType = ?1 and principalId = ?2 and role.id = ?3 and scopePath = ?4", principalType, principalId, roleId, scopePath);
     }
 }

@@ -51,7 +51,7 @@ public class RoleAssignmentService {
 
     @WithTransaction
     public Uni<Void> revoke(PrincipalType principalType, UUID principalId, UUID roleId, UUID actorUserId, String scopePath) {
-        return roleAssignmentRepository.deleteByPrincipalAndRole(principalType, principalId, roleId)
+        return roleAssignmentRepository.deleteByPrincipalAndRole(principalType, principalId, roleId, scopePath)
                 .chain(deletedCount -> {
                     if (deletedCount == 0) {
                         return Uni.createFrom().failure(new EntityNotFoundException(
