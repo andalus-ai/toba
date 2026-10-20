@@ -55,10 +55,13 @@ public class PersonalAccessTokenService {
     }
 
     @WithTransaction
-    public Uni<Void> revoke(UUID tokenId) {
+    public Uni<Void> revokeOwned(UUID tokenId, UUID actorId) {
         return patRepository.findById(tokenId)
                 .onItem().ifNull().failWith(() -> new EntityNotFoundException("IDENTITY-404-PAT-NOT-FOUND", "PersonalAccessToken", tokenId))
                 .chain(pat -> {
+                    if (pat.principalType != PrincipalType.USER || !actorId.equals(pat.principalId)) {
+                        return Uni.createFrom().failure(new jakarta.ws.rs.WebApplicationException("Forbidden", 403));
+                    }
                     if (pat.status == TokenStatus.REVOKED) {
                         return Uni.createFrom().failure(new ConflictException(
                                 "IDENTITY-409-PAT-ALREADY-REVOKED", "Token is already revoked"));
