@@ -1,6 +1,7 @@
 package com.dremioplatform.identity.resource;
 
 import com.dremioplatform.identity.domain.PrincipalType;
+import com.dremioplatform.security.IdentityManagementGuard;
 import com.dremioplatform.identity.service.PersonalAccessTokenService;
 import com.dremioplatform.identity.service.dto.CreatePatRequest;
 import com.dremioplatform.identity.service.dto.PatResponse;
@@ -28,18 +29,24 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 public class PersonalAccessTokenResource {
 
     @Inject PersonalAccessTokenService patService;
+    @Inject IdentityManagementGuard guard;
 
     @POST
     @Operation(summary = "Issue a new PAT. The raw token is returned exactly once in this response.")
     public Uni<Response> issue(@Valid CreatePatRequest request) {
-        return patService.issue(request)
+        return guard.require("identity.pat.manage").chain(actor -> {
+            if (request.principalType() != PrincipalType.USER || !actor.equals(request.principalId())) {
+                throw new jakarta.ws.rs.WebApplicationException("Cannot issue PAT for another principal", 403);
+            }
+            return patService.issue(request);
+        })
                 .map(pat -> Response.status(Response.Status.CREATED).entity(pat).build());
     }
 
     @DELETE
     @Path("/{id}")
     public Uni<Response> revoke(@PathParam("id") UUID id) {
-        return patService.revoke(id).map(v -> Response.noContent().build());
+        return guard.require("identity.pat.manage").chain(actor -> patService.revokeOwned(id, actor)).map(v -> Response.noContent().build());
     }
 
     @GET
@@ -47,6 +54,11 @@ public class PersonalAccessTokenResource {
     @Operation(summary = "List a principal's tokens (metadata only — never the raw secret or hash)")
     public Uni<List<PatResponse>> listForPrincipal(@PathParam("principalType") PrincipalType principalType,
                                                      @PathParam("principalId") UUID principalId) {
-        return patService.listForPrincipal(principalType, principalId);
+        return guard.require("identity.pat.manage").chain(actor -> {
+            if (principalType != PrincipalType.USER || !actor.equals(principalId)) {
+                throw new jakarta.ws.rs.WebApplicationException("Forbidden", 403);
+            }
+            return patService.listForPrincipal(principalType, principalId);
+        });
     }
 }
