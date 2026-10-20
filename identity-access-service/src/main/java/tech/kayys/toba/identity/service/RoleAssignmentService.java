@@ -32,7 +32,7 @@ public class RoleAssignmentService {
         return resolveEffectivePermissions(PrincipalType.USER, actorUserId, request.scopePath())
                 .chain(actorPermissions -> rolePermissionRepository.findPermissionKeysForRole(request.roleId())
                         .chain(rolePermissions -> {
-                            if (!actorPermissions.containsAll(rolePermissions)) {
+                            if (!com.dremioplatform.security.DelegationPolicy.canDelegate(actorPermissions, rolePermissions)) {
                                 return Uni.createFrom().failure(new jakarta.ws.rs.WebApplicationException(
                                         "Cannot delegate permissions not held at target scope", 403));
                             }
