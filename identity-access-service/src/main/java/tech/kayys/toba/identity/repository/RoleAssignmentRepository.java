@@ -20,7 +20,7 @@ public class RoleAssignmentRepository implements PanacheRepositoryBase<RoleAssig
      * Service's masking policies are the mechanism for narrowing what a broad grant
      * can see, not this table.
      *
-     * The "." + requestedPath LIKE scopePath + '.%' check enforces a segment boundary
+     * Literal prefix comparison enforces a segment boundary
      * so "space.salesforce" does not match a grant scoped to "space.sales".
      */
     public Uni<List<UUID>> findApplicableRoleIds(PrincipalType principalType, UUID principalId, String requestedPath) {
@@ -32,7 +32,7 @@ public class RoleAssignmentRepository implements PanacheRepositoryBase<RoleAssig
                         where ra.principalType = ?1
                           and ra.principalId = ?2
                           and (ra.expiresAt is null or ra.expiresAt > ?3)
-                          and (ra.scopePath = ?4 or ?4 like concat(ra.scopePath, '.%'))
+                          and (ra.scopePath = ?4 or substring(?4, 1, length(ra.scopePath) + 1) = concat(ra.scopePath, '.'))
                         """,
                         UUID.class)
                 .setParameter(1, principalType)
