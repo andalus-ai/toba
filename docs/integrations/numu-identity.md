@@ -60,3 +60,19 @@ The optional Toba adapter now uses `numou-security-spi` and `TenantMembershipRes
 The adapter builds Numu's principal value from the canonical UUID returned by Toba's verified identity mapping. This is identity translation, **not authentication**: callers must never pass a user ID taken directly from an untrusted request. Toba still validates the resolved tenant and requires this membership verifier before tenant-scoped access.
 
 Enable with `-Dtoba.numu.identity=true` only after installing compatible Numu reactor artifacts. Build and integration tests remain to be run in an environment with both repositories and dependencies available.
+
+## Membership adapter contract tests
+
+The opt-in profile also adds `src/numu-test/java` as a test source directory. The adapter contract suite checks that:
+- valid canonical IDs are delegated to the Numu `TenantMembershipResolver`;
+- inactive/non-member results are denied;
+- resolver failures fail closed as `false`;
+- null user or tenant identifiers are denied without calling the provider.
+
+Run the suite after installing the compatible Numu reactor artifacts:
+
+```sh
+mvn -pl identity-access-service -am test -Dtoba.numu.identity=true
+```
+
+These tests exercise Toba's adapter boundary with a controlled SPI implementation. They do not replace an integration test against Numu's real persistence adapter; that should separately verify ACTIVE membership, SUSPENDED/REVOKED membership, and inactive-user behavior against the actual repository implementation.

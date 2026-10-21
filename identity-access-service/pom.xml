@@ -199,6 +199,14 @@
                   <sources><source>src/numu/java</source></sources>
                 </configuration>
               </execution>
+              <execution>
+                <id>add-numu-adapter-test-source</id>
+                <phase>generate-test-sources</phase>
+                <goals><goal>add-test-source</goal></goals>
+                <configuration>
+                  <sources><source>src/numu-test/java</source></sources>
+                </configuration>
+              </execution>
             </executions>
           </plugin>
         </plugins>
