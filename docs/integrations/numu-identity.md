@@ -22,3 +22,14 @@ The source currently uses `tech.kayys.numou` coordinates and `0.1.0-SNAPSHOT`. D
 3. Wire the adapter behind an explicit configuration feature flag; deny by default if selected provider is unavailable.
 4. Enforce membership in Toba's catalog and query authorization evidence.
 5. Add contract tests for disabled users, wrong tenant, unknown issuer, expired credentials, and missing provider.
+
+## Confirmed Numu membership API
+
+Numu provides `tech.kayys.numou.identity.application.port.TenantMembershipPort`:
+`Uni<Boolean> isMember(Principal principal, String tenantId)` and `Uni<Set<String>> roles(...)`.
+
+Its `Principal` record requires a `UserId` for USER principals; `UserId.of(UUID)` is available. Numu's `TenantMembership` domain recognizes ACTIVE, SUSPENDED and REVOKED lifecycle states. The Numu adapter must confirm that `isMember` means *active* membership in its concrete implementation before Toba relies on it.
+
+A proposed adapter should map Toba UUIDs to Numu `UserId.of(userId)` and `tenantId.toString()`, and pass a principal constructed from verified upstream identity context. Do **not** fabricate authenticated principals from arbitrary user IDs, and do not treat Numu's global roles as Toba data grants.
+
+The adapter remains unimplemented pending verified Maven artifact resolution and a trusted principal mapping. `VerifiedIdentityBridge.requireActiveMembership` already requires an injected `TenantMembershipVerifier` and denies access if none is available.
