@@ -156,4 +156,49 @@
       </plugin>
     </plugins>
   </build>
+
+  <!--
+    Opt-in integration with the sibling Numu repository.
+    Install Numu's numou-identity-application (and its reactor dependencies)
+    into the local Maven repository before enabling this profile.
+    Keeping this profile disabled preserves standalone Toba builds.
+  -->
+  <profiles>
+    <profile>
+      <id>numu-identity-integration</id>
+      <activation>
+        <property>
+          <name>toba.numu.identity</name>
+          <value>true</value>
+        </property>
+      </activation>
+      <dependencies>
+        <dependency>
+          <groupId>tech.kayys.numou</groupId>
+          <artifactId>numou-identity-application</artifactId>
+          <version>0.1.0-SNAPSHOT</version>
+        </dependency>
+      </dependencies>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.codehaus.mojo</groupId>
+            <artifactId>build-helper-maven-plugin</artifactId>
+            <version>3.6.0</version>
+            <executions>
+              <execution>
+                <id>add-numu-adapter-source</id>
+                <phase>generate-sources</phase>
+                <goals><goal>add-source</goal></goals>
+                <configuration>
+                  <sources><source>src/numu/java</source></sources>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
+
 </project>
