@@ -33,3 +33,17 @@ Its `Principal` record requires a `UserId` for USER principals; `UserId.of(UUID)
 A proposed adapter should map Toba UUIDs to Numu `UserId.of(userId)` and `tenantId.toString()`, and pass a principal constructed from verified upstream identity context. Do **not** fabricate authenticated principals from arbitrary user IDs, and do not treat Numu's global roles as Toba data grants.
 
 The adapter remains unimplemented pending verified Maven artifact resolution and a trusted principal mapping. `VerifiedIdentityBridge.requireActiveMembership` already requires an injected `TenantMembershipVerifier` and denies access if none is available.
+
+## Optional adapter implementation
+
+The opt-in adapter now lives at `identity-access-service/src/numu/java/.../NumuTenantMembershipVerifier.java`. It is excluded from the default source tree and added only by the Maven profile `numu-identity-integration`, activated with `-Dtoba.numu.identity=true`. This keeps Toba buildable without Numu artifacts.
+
+Before enabling the profile, build/install Numu's identity application and required reactor modules into the local Maven repository. Then build Toba with:
+
+```sh
+mvn -pl identity-access-service -am test -Dtoba.numu.identity=true
+```
+
+The adapter maps canonical UUIDs to Numu's `UserId` and tenant string and delegates membership to `TenantMembershipPort`; provider failures return denial. It must only be called with canonical identity values returned by verified authentication and identity resolution. It does not authenticate a user.
+
+**Integration gate:** inspect and test the concrete Numu `TenantMembershipPort` implementation to confirm `isMember` returns true only for ACTIVE memberships. If it includes invited or suspended memberships, this adapter must be adjusted to use a status-aware query before production.
