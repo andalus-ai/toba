@@ -40,6 +40,19 @@ public class IdentityManagementGuard {
                 });
     }
 
+    /** Prevent creating roles containing permissions the actor does not hold. */
+    public Uni<UUID> requireDelegable(String managementPermission, java.util.Collection<String> proposedPermissions) {
+        return require(managementPermission).chain(actor ->
+                assignments.resolveEffectivePermissions(PrincipalType.USER, actor, scope())
+                        .onFailure().recoverWithItem(Set.of())
+                        .map(held -> {
+                            if (!DelegationPolicy.canDelegate(held, proposedPermissions)) {
+                                throw new WebApplicationException("Cannot create a role with unheld permissions", 403);
+                            }
+                            return actor;
+                        }));
+    }
+
     public Uni<UUID> requireWithinScope(String permission, String requestedScope) {
         String root = scope();
         if (!DelegationPolicy.isWithinScope(root, requestedScope)) {
