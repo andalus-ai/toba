@@ -9,6 +9,7 @@ import java.util.UUID;
 public interface ExternalIdentityResolver {
     VerifiedIdentity resolve(String verifiedSubject, String issuer);
 
+    /** Tenant membership must be established by a trusted provider, not a request parameter. */
     record VerifiedIdentity(UUID userId, UUID tenantId, boolean active) {
         public VerifiedIdentity {
             if (userId == null || tenantId == null) {
