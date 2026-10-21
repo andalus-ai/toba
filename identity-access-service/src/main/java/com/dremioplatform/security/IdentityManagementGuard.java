@@ -42,7 +42,7 @@ public class IdentityManagementGuard {
 
     public Uni<UUID> requireWithinScope(String permission, String requestedScope) {
         String root = scope();
-        if (requestedScope == null || !(requestedScope.equals(root) || requestedScope.startsWith(root + "."))) {
+        if (!DelegationPolicy.isWithinScope(root, requestedScope)) {
             throw new WebApplicationException("Scope outside management boundary", 403);
         }
         return require(permission);
