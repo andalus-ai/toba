@@ -31,7 +31,7 @@ public class RoleResource {
 
     @POST
     public Uni<Response> create(@Valid CreateRoleRequest request) {
-        return guard.require("identity.role.manage").chain(actor -> roleService.createRole(request))
+        return guard.requireDelegable("identity.role.manage", request.permissionKeys()).chain(actor -> roleService.createRole(request))
                 .map(role -> Response.status(Response.Status.CREATED).entity(role).build());
     }
 
