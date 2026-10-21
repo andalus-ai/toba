@@ -27,4 +27,27 @@ class VerifiedIdentityBridgeTest {
         assertEquals(403, assertThrows(WebApplicationException.class,
                 () -> bridge.requireTenant(null, UUID.randomUUID())).getResponse().getStatus());
     }
+    @Test void rejectsInactiveIdentityEvenWithMatchingTenant() {
+        var bridge = new VerifiedIdentityBridge();
+        UUID tenant = UUID.randomUUID();
+        var identity = new ExternalIdentityResolver.VerifiedIdentity(UUID.randomUUID(), tenant, false);
+        assertEquals(403, assertThrows(WebApplicationException.class,
+                () -> bridge.requireTenant(identity, tenant)).getResponse().getStatus());
+    }
+
+    @Test void rejectsIdentityWithMissingUser() {
+        var bridge = new VerifiedIdentityBridge();
+        UUID tenant = UUID.randomUUID();
+        var identity = new ExternalIdentityResolver.VerifiedIdentity(null, tenant, true);
+        assertEquals(403, assertThrows(WebApplicationException.class,
+                () -> bridge.requireTenant(identity, tenant)).getResponse().getStatus());
+    }
+
+    @Test void rejectsNullRequestedTenant() {
+        var bridge = new VerifiedIdentityBridge();
+        var identity = new ExternalIdentityResolver.VerifiedIdentity(UUID.randomUUID(), UUID.randomUUID(), true);
+        assertEquals(403, assertThrows(WebApplicationException.class,
+                () -> bridge.requireTenant(identity, null)).getResponse().getStatus());
+    }
+
 }
