@@ -47,3 +47,16 @@ mvn -pl identity-access-service -am test -Dtoba.numu.identity=true
 The adapter maps canonical UUIDs to Numu's `UserId` and tenant string and delegates membership to `TenantMembershipPort`; provider failures return denial. It must only be called with canonical identity values returned by verified authentication and identity resolution. It does not authenticate a user.
 
 **Integration gate:** inspect and test the concrete Numu `TenantMembershipPort` implementation to confirm `isMember` returns true only for ACTIVE memberships. If it includes invited or suspended memberships, this adapter must be adjusted to use a status-aware query before production.
+
+## SPI correction: use Numu's authoritative active-membership resolver
+
+Repository inspection found the concrete Numu implementation:
+- `IdentityTenantMembershipAdapter` implements `TenantMembershipResolver`.
+- It delegates to `MembershipManagementPort.isActive(tenantId, userId)`.
+- The PostgreSQL implementation checks both membership status `ACTIVE` and user status `ACTIVE`.
+
+The optional Toba adapter now uses `numou-security-spi` and `TenantMembershipResolver`, rather than calling the identity application `TenantMembershipPort` directly. This follows Numu's security boundary and active-membership semantics.
+
+The adapter builds Numu's principal value from the canonical UUID returned by Toba's verified identity mapping. This is identity translation, **not authentication**: callers must never pass a user ID taken directly from an untrusted request. Toba still validates the resolved tenant and requires this membership verifier before tenant-scoped access.
+
+Enable with `-Dtoba.numu.identity=true` only after installing compatible Numu reactor artifacts. Build and integration tests remain to be run in an environment with both repositories and dependencies available.

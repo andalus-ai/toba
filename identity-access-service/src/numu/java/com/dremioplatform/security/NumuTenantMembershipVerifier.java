@@ -4,26 +4,27 @@ import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.util.UUID;
-import tech.kayys.numou.identity.application.port.TenantMembershipPort;
-import tech.kayys.numou.identity.application.security.Principal;
-import tech.kayys.numou.identity.domain.user.UserId;
+import tech.kayys.numou.foundation.domain.tenant.TenantId;
+import tech.kayys.numou.security.domain.authorization.Principal;
+import tech.kayys.numou.security.domain.identifier.PrincipalId;
+import tech.kayys.numou.security.spi.port.TenantMembershipResolver;
 
 /**
- * Optional adapter compiled only with -Pnumu-identity-integration.
- * Inputs must already be resolved from verified authentication, not request headers.
+ * Optional Numu Security SPI adapter. The UUID must come from Toba's verified identity
+ * resolver; this class does not authenticate credentials or trust request-supplied IDs.
  */
 @ApplicationScoped
 public class NumuTenantMembershipVerifier implements TenantMembershipVerifier {
-    @Inject TenantMembershipPort membershipPort;
+    @Inject TenantMembershipResolver membershipResolver;
 
     @Override
     public Uni<Boolean> isActiveMember(UUID userId, UUID tenantId) {
         if (userId == null || tenantId == null) {
             return Uni.createFrom().item(false);
         }
-        Principal verifiedPrincipal = new Principal(
-                UserId.of(userId), userId.toString(), null, null, null, null);
-        return membershipPort.isMember(verifiedPrincipal, tenantId.toString())
+        Principal principal = Principal.of(
+                PrincipalId.of(userId), userId.toString(), TenantId.of(tenantId));
+        return membershipResolver.isMember(principal, TenantId.of(tenantId))
                 .onFailure().recoverWithItem(false)
                 .map(Boolean.TRUE::equals);
     }
