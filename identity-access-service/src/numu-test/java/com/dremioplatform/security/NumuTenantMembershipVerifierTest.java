@@ -54,6 +54,18 @@ class NumuTenantMembershipVerifierTest {
     }
 
     @Test
+    void failsClosedWhenResolverThrowsSynchronously() {
+        TenantMembershipResolver resolver = (principal, tenant) -> {
+            throw new IllegalStateException("resolver disconnected");
+        };
+        NumuTenantMembershipVerifier verifier = new NumuTenantMembershipVerifier();
+        verifier.membershipResolver = resolver;
+
+        assertFalse(verifier.isActiveMember(UUID.randomUUID(), UUID.randomUUID())
+                .await().indefinitely());
+    }
+
+    @Test
     void rejectsNullIdentifiersWithoutCallingProvider() {
         AtomicInteger calls = new AtomicInteger();
         TenantMembershipResolver resolver = (principal, tenant) -> {
