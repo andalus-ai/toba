@@ -79,6 +79,43 @@ class NumuIdentityAuthorizationChainTest {
         assertStatus(403, () -> bridge.requireActiveMembership(identity, tenant).await().indefinitely());
     }
 
+
+    @Test
+    void rejectsMissingVerifiedCredentialsBeforeCallingProvider() {
+        assertStatus(401, () -> bridge.resolve("", "trusted-issuer"));
+        assertStatus(401, () -> bridge.resolve("trusted-subject", " "));
+        verifyNoInteractions(resolver);
+    }
+
+    @Test
+    void rejectsInactiveVerifiedIdentityBeforeMembershipCheck() {
+        var identity = new ExternalIdentityResolver.VerifiedIdentity(user, tenant, false);
+        assertStatus(403, () -> bridge.requireActiveMembership(identity, tenant));
+        verifyNoInteractions(resolver);
+    }
+
+    @Test
+    void rejectsNullCanonicalUserBeforeMembershipCheck() {
+        var identity = new ExternalIdentityResolver.VerifiedIdentity(null, tenant, true);
+        assertStatus(403, () -> bridge.requireActiveMembership(identity, tenant));
+        verifyNoInteractions(resolver);
+    }
+
+    @Test
+    void rejectsUnavailableMembershipProvider() {
+        bridge.memberships = unavailableMemberships();
+        var identity = bridge.resolve("trusted-subject", "trusted-issuer");
+        assertStatus(503, () -> bridge.requireActiveMembership(identity, tenant).await().indefinitely());
+        verifyNoInteractions(resolver);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Instance<TenantMembershipVerifier> unavailableMemberships() {
+        Instance<TenantMembershipVerifier> memberships = mock(Instance.class);
+        when(memberships.isUnsatisfied()).thenReturn(true);
+        return memberships;
+    }
+
     private static void assertStatus(int status, Runnable action) {
         WebApplicationException failure = assertThrows(WebApplicationException.class, action::run);
         assertEquals(status, failure.getResponse().getStatus());
