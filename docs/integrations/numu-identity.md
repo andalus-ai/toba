@@ -76,3 +76,37 @@ mvn -pl identity-access-service -am test -Dtoba.numu.identity=true
 ```
 
 These tests exercise Toba's adapter boundary with a controlled SPI implementation. They do not replace an integration test against Numu's real persistence adapter; that should separately verify ACTIVE membership, SUSPENDED/REVOKED membership, and inactive-user behavior against the actual repository implementation.
+
+## Milestone: in-process identity-to-membership authorization chain
+
+The optional `NumuIdentityAuthorizationChainTest` exercises the combined
+`VerifiedIdentityBridge.resolve` → `NumuTenantMembershipVerifier` →
+`VerifiedIdentityBridge.requireActiveMembership` path. It verifies:
+
+- an active membership is accepted for the verified canonical user and tenant;
+- an inactive membership is rejected;
+- a different requested tenant is rejected before calling Numu;
+- asynchronous and synchronous membership-provider failures deny access.
+
+This is an **in-process contract suite with a controlled Numu SPI**, not a
+PostgreSQL-backed end-to-end test. Numu's PostgreSQL suite independently
+tests its real persistence-backed `TenantMembershipResolver`. A full
+cross-repository runtime test still requires packaging Numu's identity
+adapter and its database in the same Quarkus test application (or a deployed
+service boundary). Do not claim production integration from these tests alone.
+
+Run after installing compatible Numu artifacts:
+
+```sh
+mvn -pl identity-access-service -am test -Dtoba.numu.identity=true
+```
+
+The default build remains independent of Numu:
+
+```sh
+mvn -pl identity-access-service -am test
+```
+
+Security invariants: only a verified upstream subject and issuer may enter
+identity resolution; tenant membership does not imply lakehouse data grants;
+unavailable or ambiguous identity/membership providers must never authorize.
