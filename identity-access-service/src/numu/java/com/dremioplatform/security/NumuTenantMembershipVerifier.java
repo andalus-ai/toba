@@ -24,7 +24,7 @@ public class NumuTenantMembershipVerifier implements TenantMembershipVerifier {
         }
         Principal principal = Principal.of(
                 PrincipalId.of(userId), userId.toString(), TenantId.of(tenantId));
-        return membershipResolver.isMember(principal, TenantId.of(tenantId))
+        return Uni.createFrom().deferred(() -> membershipResolver.isMember(principal, TenantId.of(tenantId)))
                 .onFailure().recoverWithItem(false)
                 .map(Boolean.TRUE::equals);
     }
