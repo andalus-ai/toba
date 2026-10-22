@@ -25,7 +25,7 @@ public class VerifiedIdentityBridge {
         } catch (RuntimeException exception) {
             throw new WebApplicationException("Identity resolution rejected", 403);
         }
-        if (resolved == null || !resolved.active()) {
+        if (resolved == null || !resolved.active() || resolved.userId() == null || resolved.tenantId() == null) {
             throw new WebApplicationException("Identity inactive", 403);
         }
         return resolved;
