@@ -50,4 +50,10 @@ class VerifiedIdentityBridgeTest {
                 () -> bridge.requireTenant(identity, null)).getResponse().getStatus());
     }
 
+    @Test void rejectsResolvedIdentityWithoutTenant() {
+        var bridge = new VerifiedIdentityBridge();
+        var identity = new ExternalIdentityResolver.VerifiedIdentity(UUID.randomUUID(), null, true);
+        assertEquals(403, assertThrows(WebApplicationException.class,
+                () -> bridge.requireTenant(identity, UUID.randomUUID())).getResponse().getStatus());
+    }
 }
