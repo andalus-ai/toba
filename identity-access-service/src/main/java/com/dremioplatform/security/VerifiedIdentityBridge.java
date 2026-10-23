@@ -25,7 +25,7 @@ public class VerifiedIdentityBridge {
         } catch (RuntimeException exception) {
             throw new WebApplicationException("Identity resolution rejected", 403);
         }
-        if (resolved == null || !resolved.active()) {
+        if (resolved == null || !resolved.active() || resolved.userId() == null || resolved.tenantId() == null) {
             throw new WebApplicationException("Identity inactive", 403);
         }
         return resolved;
@@ -39,7 +39,7 @@ public class VerifiedIdentityBridge {
             return io.smallrye.mutiny.Uni.createFrom().failure(
                     new WebApplicationException("Membership provider unavailable", 503));
         }
-        return memberships.get().isActiveMember(userId, tenantId)
+        return io.smallrye.mutiny.Uni.createFrom().deferred(() -> memberships.get().isActiveMember(userId, tenantId))
                 .onFailure().recoverWithItem(false)
                 .map(active -> {
                     if (!Boolean.TRUE.equals(active)) {
@@ -50,7 +50,8 @@ public class VerifiedIdentityBridge {
     }
 
     public UUID requireTenant(ExternalIdentityResolver.VerifiedIdentity resolved, UUID tenantId) {
-        if (resolved == null || tenantId == null || !tenantId.equals(resolved.tenantId())) {
+        if (resolved == null || !resolved.active() || resolved.userId() == null
+                || tenantId == null || !tenantId.equals(resolved.tenantId())) {
             throw new WebApplicationException("Tenant membership required", 403);
         }
         return resolved.userId();
