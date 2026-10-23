@@ -1,6 +1,7 @@
 package com.dremioplatform.catalog.resource;
 
 import com.dremioplatform.catalog.service.TableService;
+import com.dremioplatform.catalog.security.CatalogAccessGuard;
 import com.dremioplatform.catalog.service.dto.CreateTableRequest;
 import com.dremioplatform.catalog.service.dto.ListTablesResponse;
 import com.dremioplatform.catalog.service.dto.LoadTableResponse;
@@ -17,6 +18,8 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.HeaderParam;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.Context;
+import jakarta.ws.rs.core.SecurityContext;
 import java.util.UUID;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
@@ -34,10 +37,13 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 public class TableResource {
 
     @Inject TableService tableService;
+    @Inject CatalogAccessGuard access;
+    @Context SecurityContext securityContext;
 
     @GET
     @Operation(summary = "List tables in a namespace")
     public Uni<ListTablesResponse> list(@PathParam("namespace") String namespace) {
+        access.require(securityContext, "catalog.table.list", namespace);
         return tableService.list(namespace);
     }
 
@@ -46,6 +52,7 @@ public class TableResource {
     public Uni<Response> create(@PathParam("namespace") String namespace,
                                  @Valid CreateTableRequest request,
                                  @HeaderParam("X-Actor-Id") UUID actorId) {
+        access.require(securityContext, "catalog.table.create", namespace);
         return tableService.create(namespace, request, actorId)
                 .map(table -> Response.status(Response.Status.OK).entity(table).build());
     }
@@ -54,6 +61,7 @@ public class TableResource {
     @Path("/{table}")
     @Operation(summary = "Load a table's current metadata pointer")
     public Uni<LoadTableResponse> load(@PathParam("namespace") String namespace, @PathParam("table") String table) {
+        access.require(securityContext, "catalog.table.read", namespace + "/" + table);
         return tableService.load(namespace, table);
     }
 
@@ -63,6 +71,7 @@ public class TableResource {
     public Uni<Response> drop(@PathParam("namespace") String namespace,
                                @PathParam("table") String table,
                                @HeaderParam("X-Actor-Id") UUID actorId) {
+        access.require(securityContext, "catalog.table.delete", namespace + "/" + table);
         return tableService.drop(namespace, table, actorId).map(v -> Response.noContent().build());
     }
 }
