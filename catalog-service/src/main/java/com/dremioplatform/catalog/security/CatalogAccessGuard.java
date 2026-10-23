@@ -3,7 +3,7 @@ package com.dremioplatform.catalog.security;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.core.SecurityContext;
-import java.security.Principal;
+import java.util.UUID;
 
 /**
  * Fail-closed catalog boundary until a trusted identity + membership + grants
@@ -11,6 +11,15 @@ import java.security.Principal;
  */
 @ApplicationScoped
 public class CatalogAccessGuard {
+    /**
+     * Never infer the actor from a caller-controlled header or an arbitrary
+     * principal name. Until a verified canonical identity adapter is installed,
+     * catalog mutations must fail closed.
+     */
+    public UUID requireActorId(SecurityContext context) {
+        throw new ForbiddenException("Verified canonical actor unavailable");
+    }
+
     public void require(SecurityContext context, String action, String resource) {
         if (context == null || context.getUserPrincipal() == null
                 || context.getUserPrincipal().getName() == null
