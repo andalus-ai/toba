@@ -1,6 +1,7 @@
 package com.dremioplatform.catalog.resource;
 
 import com.dremioplatform.catalog.service.NamespaceService;
+import com.dremioplatform.catalog.security.CatalogAccessGuard;
 import com.dremioplatform.catalog.service.dto.CreateNamespaceRequest;
 import com.dremioplatform.catalog.service.dto.ListNamespacesResponse;
 import com.dremioplatform.catalog.service.dto.NamespaceResponse;
@@ -18,6 +19,8 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.Context;
+import jakarta.ws.rs.core.SecurityContext;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
@@ -34,16 +37,20 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 public class NamespaceResource {
 
     @Inject NamespaceService namespaceService;
+    @Inject CatalogAccessGuard access;
+    @Context SecurityContext securityContext;
 
     @GET
     @Operation(summary = "List namespaces, optionally under a parent")
     public Uni<ListNamespacesResponse> list(@QueryParam("parent") String parent) {
+        access.require(securityContext, "catalog.namespace.list", parent == null ? "root" : parent);
         return namespaceService.listChildren(parent);
     }
 
     @POST
     @Operation(summary = "Create a namespace")
     public Uni<Response> create(@Valid CreateNamespaceRequest request) {
+        access.require(securityContext, "catalog.namespace.create", "namespaces");
         return namespaceService.create(request)
                 .map(ns -> Response.status(Response.Status.OK).entity(ns).build());
     }
@@ -52,6 +59,7 @@ public class NamespaceResource {
     @Path("/{namespace}")
     @Operation(summary = "Load a namespace's properties")
     public Uni<NamespaceResponse> get(@PathParam("namespace") String namespace) {
+        access.require(securityContext, "catalog.namespace.read", namespace);
         return namespaceService.get(namespace);
     }
 
@@ -59,6 +67,7 @@ public class NamespaceResource {
     @Path("/{namespace}")
     @Operation(summary = "Check whether a namespace exists (spec requires a HEAD variant)")
     public Uni<Response> exists(@PathParam("namespace") String namespace) {
+        access.require(securityContext, "catalog.namespace.read", namespace);
         return namespaceService.get(namespace)
                 .map(ns -> Response.ok().build())
                 .onFailure().recoverWithItem(Response.status(Response.Status.NOT_FOUND).build());
@@ -68,6 +77,7 @@ public class NamespaceResource {
     @Path("/{namespace}")
     @Operation(summary = "Drop an empty namespace")
     public Uni<Response> delete(@PathParam("namespace") String namespace) {
+        access.require(securityContext, "catalog.namespace.delete", namespace);
         return namespaceService.delete(namespace).map(v -> Response.noContent().build());
     }
 }
