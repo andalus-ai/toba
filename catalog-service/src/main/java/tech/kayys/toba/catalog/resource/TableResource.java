@@ -15,7 +15,6 @@ import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
-import jakarta.ws.rs.core.HeaderParam;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Context;
@@ -50,10 +49,9 @@ public class TableResource {
     @POST
     @Operation(summary = "Create a table in a namespace")
     public Uni<Response> create(@PathParam("namespace") String namespace,
-                                 @Valid CreateTableRequest request,
-                                 @HeaderParam("X-Actor-Id") UUID actorId) {
+                                 @Valid CreateTableRequest request) {
         access.require(securityContext, "catalog.table.create", namespace);
-        return tableService.create(namespace, request, actorId)
+        return tableService.create(namespace, request, access.requireActorId(securityContext))
                 .map(table -> Response.status(Response.Status.OK).entity(table).build());
     }
 
@@ -69,9 +67,8 @@ public class TableResource {
     @Path("/{table}")
     @Operation(summary = "Drop a table")
     public Uni<Response> drop(@PathParam("namespace") String namespace,
-                               @PathParam("table") String table,
-                               @HeaderParam("X-Actor-Id") UUID actorId) {
+                               @PathParam("table") String table) {
         access.require(securityContext, "catalog.table.delete", namespace + "/" + table);
-        return tableService.drop(namespace, table, actorId).map(v -> Response.noContent().build());
+        return tableService.drop(namespace, table, access.requireActorId(securityContext)).map(v -> Response.noContent().build());
     }
 }
