@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 import io.smallrye.mutiny.Uni;
-import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -13,62 +12,67 @@ class VerifiedMembershipAuthorizationTest {
     private final UUID user = UUID.randomUUID();
     private final UUID tenant = UUID.randomUUID();
     private VerifiedMembershipAuthorization authorization;
-    private VerifiedIdentityBridge bridge;
+    private VerifiedIdentityBridge membership;
+    private TrustedAuthorizationResolver grants;
     private ExternalIdentityResolver.VerifiedIdentity identity;
 
     @BeforeEach
     void setup() {
-        bridge = mock(VerifiedIdentityBridge.class);
+        membership = mock(VerifiedIdentityBridge.class);
+        grants = mock(TrustedAuthorizationResolver.class);
         authorization = new VerifiedMembershipAuthorization();
-        authorization.identities = bridge;
-        authorization.decisions = new AuthorizationDecisionService();
+        authorization.identities = membership;
+        authorization.grants = grants;
         identity = new ExternalIdentityResolver.VerifiedIdentity(user, tenant, true);
     }
 
-    private boolean check(UUID requestedTenant, UUID workspace, String action,
-                          Set<String> grants, UUID grantWorkspace) {
-        return authorization.isAllowed(identity, requestedTenant, workspace, action,
-                "catalog:orders", grants, grantWorkspace).await().indefinitely();
+    private boolean check(UUID requestedTenant, UUID workspace, String action) {
+        return authorization.isAllowed(identity, requestedTenant, workspace,
+                action, "catalog:orders").await().indefinitely();
     }
 
     @Test
-    void permitsActiveMemberWithExplicitActionGrant() {
-        when(bridge.requireActiveMembership(identity, tenant)).thenReturn(Uni.createFrom().item(user));
-        assertTrue(check(tenant, null, "catalog.read", Set.of("catalog.read"), null));
+    void allowsOnlyWhenMembershipAndAuthoritativeGrantAgree() {
+        when(membership.requireActiveMembership(identity, tenant)).thenReturn(Uni.createFrom().item(user));
+        when(grants.isAllowed(user, "catalog.read", "catalog:orders", tenant, null)).thenReturn(true);
+        assertTrue(check(tenant, null, "catalog.read"));
+        verify(grants).isAllowed(user, "catalog.read", "catalog:orders", tenant, null);
     }
 
     @Test
-    void deniesMembershipWithoutActionGrant() {
-        when(bridge.requireActiveMembership(identity, tenant)).thenReturn(Uni.createFrom().item(user));
-        assertFalse(check(tenant, null, "catalog.read", Set.of("catalog.write"), null));
+    void deniesActiveMemberWithoutServerSideGrant() {
+        when(membership.requireActiveMembership(identity, tenant)).thenReturn(Uni.createFrom().item(user));
+        assertFalse(check(tenant, null, "catalog.read"));
     }
 
     @Test
-    void deniesWorkspaceScopeMismatch() {
+    void deniesMembershipFailureBeforeConsultingGrants() {
+        when(membership.requireActiveMembership(identity, tenant)).thenReturn(
+                Uni.createFrom().failure(new IllegalStateException("membership unavailable")));
+        assertFalse(check(tenant, null, "catalog.read"));
+        verifyNoInteractions(grants);
+    }
+
+    @Test
+    void deniesGrantResolverFailure() {
+        when(membership.requireActiveMembership(identity, tenant)).thenReturn(Uni.createFrom().item(user));
+        when(grants.isAllowed(user, "catalog.read", "catalog:orders", tenant, null))
+                .thenThrow(new IllegalStateException("policy store unavailable"));
+        assertFalse(check(tenant, null, "catalog.read"));
+    }
+
+    @Test
+    void deniesInvalidActionBeforeMembershipLookup() {
+        assertFalse(check(tenant, null, " "));
+        verifyNoInteractions(membership, grants);
+    }
+
+    @Test
+    void passesWorkspaceToAuthoritativeResolver() {
         UUID workspace = UUID.randomUUID();
-        when(bridge.requireActiveMembership(identity, tenant)).thenReturn(Uni.createFrom().item(user));
-        assertFalse(check(tenant, workspace, "query.execute",
-                Set.of("query.execute"), UUID.randomUUID()));
-    }
-
-    @Test
-    void deniesMembershipProviderFailure() {
-        when(bridge.requireActiveMembership(identity, tenant)).thenReturn(
-                Uni.createFrom().failure(new IllegalStateException("unavailable")));
-        assertFalse(check(tenant, null, "catalog.read", Set.of("catalog.read"), null));
-    }
-
-    @Test
-    void deniesWrongTenantEvenWithActionGrant() {
-        UUID wrongTenant = UUID.randomUUID();
-        when(bridge.requireActiveMembership(identity, wrongTenant)).thenReturn(
-                Uni.createFrom().failure(new IllegalArgumentException("wrong tenant")));
-        assertFalse(check(wrongTenant, null, "catalog.read", Set.of("catalog.read"), null));
-    }
-
-    @Test
-    void deniesMissingActionWithoutCallingMembership() {
-        assertFalse(check(tenant, null, "", Set.of("catalog.read"), null));
-        verifyNoInteractions(bridge);
+        when(membership.requireActiveMembership(identity, tenant)).thenReturn(Uni.createFrom().item(user));
+        when(grants.isAllowed(user, "query.execute", "catalog:orders", tenant, workspace)).thenReturn(true);
+        assertTrue(check(tenant, workspace, "query.execute"));
+        verify(grants).isAllowed(user, "query.execute", "catalog:orders", tenant, workspace);
     }
 }
