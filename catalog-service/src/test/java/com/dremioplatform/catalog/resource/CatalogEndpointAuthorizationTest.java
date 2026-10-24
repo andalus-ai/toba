@@ -7,6 +7,7 @@ import com.dremioplatform.catalog.security.CatalogAccessGuard;
 import com.dremioplatform.catalog.service.NamespaceService;
 import com.dremioplatform.catalog.service.TableService;
 import jakarta.ws.rs.ForbiddenException;
+import io.smallrye.mutiny.Uni;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -21,7 +22,9 @@ class CatalogEndpointAuthorizationTest {
     void setup() {
         tableService = mock(TableService.class);
         namespaceService = mock(NamespaceService.class);
-        CatalogAccessGuard guard = new CatalogAccessGuard();
+        CatalogAccessGuard guard = mock(CatalogAccessGuard.class);
+        when(guard.authorize(any(), anyString(), anyString()))
+                .thenReturn(Uni.createFrom().failure(new ForbiddenException("denied")));
         tables = new TableResource();
         tables.tableService = tableService;
         tables.access = guard;
@@ -31,47 +34,47 @@ class CatalogEndpointAuthorizationTest {
     }
 
     @Test void tableListCannotReachService() {
-        assertThrows(ForbiddenException.class, () -> tables.list("sales"));
+        assertThrows(ForbiddenException.class, () -> tables.list("sales").await().indefinitely());
         verifyNoInteractions(tableService);
     }
 
     @Test void tableLoadCannotReachService() {
-        assertThrows(ForbiddenException.class, () -> tables.load("sales", "orders"));
+        assertThrows(ForbiddenException.class, () -> tables.load("sales", "orders").await().indefinitely());
         verifyNoInteractions(tableService);
     }
 
     @Test void tableDropCannotReachService() {
-        assertThrows(ForbiddenException.class, () -> tables.drop("sales", "orders", null));
+        assertThrows(ForbiddenException.class, () -> tables.drop("sales", "orders").await().indefinitely());
         verifyNoInteractions(tableService);
     }
 
     @Test void tableCreateCannotReachService() {
-        assertThrows(ForbiddenException.class, () -> tables.create("sales", null, null));
+        assertThrows(ForbiddenException.class, () -> tables.create("sales", null).await().indefinitely());
         verifyNoInteractions(tableService);
     }
 
     @Test void namespaceListCannotReachService() {
-        assertThrows(ForbiddenException.class, () -> namespaces.list(null));
+        assertThrows(ForbiddenException.class, () -> namespaces.list(null).await().indefinitely());
         verifyNoInteractions(namespaceService);
     }
 
     @Test void namespaceReadCannotReachService() {
-        assertThrows(ForbiddenException.class, () -> namespaces.get("sales"));
+        assertThrows(ForbiddenException.class, () -> namespaces.get("sales").await().indefinitely());
         verifyNoInteractions(namespaceService);
     }
 
     @Test void namespaceHeadCannotReachService() {
-        assertThrows(ForbiddenException.class, () -> namespaces.exists("sales"));
+        assertThrows(ForbiddenException.class, () -> namespaces.exists("sales").await().indefinitely());
         verifyNoInteractions(namespaceService);
     }
 
     @Test void namespaceDeleteCannotReachService() {
-        assertThrows(ForbiddenException.class, () -> namespaces.delete("sales"));
+        assertThrows(ForbiddenException.class, () -> namespaces.delete("sales").await().indefinitely());
         verifyNoInteractions(namespaceService);
     }
 
     @Test void namespaceCreateCannotReachService() {
-        assertThrows(ForbiddenException.class, () -> namespaces.create(null));
+        assertThrows(ForbiddenException.class, () -> namespaces.create(null).await().indefinitely());
         verifyNoInteractions(namespaceService);
     }
 }
