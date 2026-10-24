@@ -12,7 +12,7 @@ class CatalogAccessGuardTest {
     private final CatalogAccessGuard guard = new CatalogAccessGuard();
 
     @Test void deniesMissingSecurityContext() {
-        assertThrows(ForbiddenException.class, () -> guard.require(null, "catalog.read", "tables"));
+        assertThrows(ForbiddenException.class, () -> guard.authorize(null, "catalog.read", "tables").await().indefinitely());
     }
 
     @Test void deniesUnauthenticatedContext() {

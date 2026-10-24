@@ -1,35 +1,39 @@
 package com.dremioplatform.catalog.security;
 
+import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.inject.Instance;
+import jakarta.inject.Inject;
 import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.UUID;
 
 /**
- * Fail-closed catalog boundary until a trusted identity + membership + grants
- * implementation is installed. HTTP actor headers are never credentials.
+ * Fail-closed catalog authorization. Only a trusted server-side provider can
+ * supply the canonical actor; a principal name or HTTP header is insufficient.
  */
 @ApplicationScoped
 public class CatalogAccessGuard {
-    /**
-     * Never infer the actor from a caller-controlled header or an arbitrary
-     * principal name. Until a verified canonical identity adapter is installed,
-     * catalog mutations must fail closed.
-     */
-    public UUID requireActorId(SecurityContext context) {
-        throw new ForbiddenException("Verified canonical actor unavailable");
-    }
+    @Inject Instance<CatalogAuthorizationProvider> providers;
 
-    public void require(SecurityContext context, String action, String resource) {
+    public Uni<UUID> authorize(SecurityContext context, String action, String resource) {
         if (context == null || context.getUserPrincipal() == null
                 || context.getUserPrincipal().getName() == null
                 || context.getUserPrincipal().getName().isBlank()
-                || action == null || action.isBlank()
-                || resource == null || resource.isBlank()) {
-            throw new ForbiddenException("Catalog access denied");
+                || action == null || action.isBlank() || resource == null || resource.isBlank()
+                || providers == null || providers.isUnsatisfied() || providers.isAmbiguous()) {
+            return denied();
         }
-        // Authentication alone is insufficient. A future integration must
-        // resolve canonical tenant membership and authoritative Toba grants.
-        throw new ForbiddenException("Catalog authorization provider not configured");
+        return Uni.createFrom().deferred(() -> {
+            Uni<UUID> result = providers.get().authorize(context, action, resource);
+            return result == null ? denied() : result;
+        }).onItem().transform(actor -> {
+            if (actor == null) throw new ForbiddenException("Catalog access denied");
+            return actor;
+        }).onFailure().transform(error -> new ForbiddenException("Catalog access denied"));
+    }
+
+    private Uni<UUID> denied() {
+        return Uni.createFrom().failure(new ForbiddenException("Catalog access denied"));
     }
 }
