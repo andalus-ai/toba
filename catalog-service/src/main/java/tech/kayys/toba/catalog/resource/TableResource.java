@@ -42,16 +42,16 @@ public class TableResource {
     @GET
     @Operation(summary = "List tables in a namespace")
     public Uni<ListTablesResponse> list(@PathParam("namespace") String namespace) {
-        access.require(securityContext, "catalog.table.list", namespace);
-        return tableService.list(namespace);
+        return access.authorize(securityContext, "catalog.table.list", namespace)
+                .onItem().transformToUni(actor -> tableService.list(namespace));
     }
 
     @POST
     @Operation(summary = "Create a table in a namespace")
     public Uni<Response> create(@PathParam("namespace") String namespace,
                                  @Valid CreateTableRequest request) {
-        access.require(securityContext, "catalog.table.create", namespace);
-        return tableService.create(namespace, request, access.requireActorId(securityContext))
+        return access.authorize(securityContext, "catalog.table.create", namespace)
+                .onItem().transformToUni(actor -> tableService.create(namespace, request, actor))
                 .map(table -> Response.status(Response.Status.OK).entity(table).build());
     }
 
@@ -59,8 +59,8 @@ public class TableResource {
     @Path("/{table}")
     @Operation(summary = "Load a table's current metadata pointer")
     public Uni<LoadTableResponse> load(@PathParam("namespace") String namespace, @PathParam("table") String table) {
-        access.require(securityContext, "catalog.table.read", namespace + "/" + table);
-        return tableService.load(namespace, table);
+        return access.authorize(securityContext, "catalog.table.read", namespace + "/" + table)
+                .onItem().transformToUni(actor -> tableService.load(namespace, table));
     }
 
     @DELETE
@@ -68,7 +68,8 @@ public class TableResource {
     @Operation(summary = "Drop a table")
     public Uni<Response> drop(@PathParam("namespace") String namespace,
                                @PathParam("table") String table) {
-        access.require(securityContext, "catalog.table.delete", namespace + "/" + table);
-        return tableService.drop(namespace, table, access.requireActorId(securityContext)).map(v -> Response.noContent().build());
+        return access.authorize(securityContext, "catalog.table.delete", namespace + "/" + table)
+                .onItem().transformToUni(actor -> tableService.drop(namespace, table, actor))
+                .map(v -> Response.noContent().build());
     }
 }
