@@ -17,18 +17,18 @@ class CatalogAccessGuardTest {
 
     @Test void deniesUnauthenticatedContext() {
         SecurityContext context = mock(SecurityContext.class);
-        assertThrows(ForbiddenException.class, () -> guard.require(context, "catalog.read", "tables"));
+        assertThrows(ForbiddenException.class, () -> guard.authorize(context, "catalog.read", "tables").await().indefinitely());
     }
 
     @Test void deniesAuthenticatedPrincipalWithoutAuthorizationEvidence() {
         SecurityContext context = mock(SecurityContext.class);
         when(context.getUserPrincipal()).thenReturn((Principal) () -> "authenticated-user");
-        assertThrows(ForbiddenException.class, () -> guard.require(context, "catalog.read", "tables"));
+        assertThrows(ForbiddenException.class, () -> guard.authorize(context, "catalog.read", "tables").await().indefinitely());
     }
 
     @Test void deniesBlankAction() {
         SecurityContext context = mock(SecurityContext.class);
         when(context.getUserPrincipal()).thenReturn((Principal) () -> "authenticated-user");
-        assertThrows(ForbiddenException.class, () -> guard.require(context, " ", "tables"));
+        assertThrows(ForbiddenException.class, () -> guard.authorize(context, " ", "tables").await().indefinitely());
     }
 }
