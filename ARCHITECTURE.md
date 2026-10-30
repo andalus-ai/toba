@@ -71,3 +71,18 @@ Clients / Farabi / SDKs / Governed Agents
 ## Documentation scope warning
 
 Some legacy files under `docs/docs/` currently describe **Farabi BI**. They are not authoritative for Toba's product mission or module ownership. Until audited and relocated/corrected, use `VISION.md`, `ARCHITECTURE.md`, `ROADMAP.md`, root `AGENTS.md` and Toba-specific `docs/architecture/engine-strategy.md` for Toba decisions. Do not silently rewrite historical documents; track cleanup separately.
+
+## Architecture diagrams
+
+The [Mermaid architecture atlas](docs/architecture/diagrams/README.md) contains separately reviewable diagrams for:
+
+- [System context](docs/architecture/diagrams/system-context.md)
+- [Control plane versus data plane](docs/architecture/diagrams/control-data-plane.md)
+- [Hexagonal dependency boundaries](docs/architecture/diagrams/hexagonal-boundaries.md)
+- [Governed query sequence](docs/architecture/diagrams/governed-query.md)
+- [Catalog authorization and actor provenance](docs/architecture/diagrams/catalog-authorization.md)
+- [Governed agent operations](docs/architecture/diagrams/agentic-operations.md)
+- [Query job state machine](docs/architecture/diagrams/job-lifecycle.md)
+- [Reference deployment](docs/architecture/diagrams/deployment.md)
+
+All diagrams are **target designs** unless explicitly marked verified. When changing a boundary or lifecycle, update the relevant diagram, tests and ADR together.
