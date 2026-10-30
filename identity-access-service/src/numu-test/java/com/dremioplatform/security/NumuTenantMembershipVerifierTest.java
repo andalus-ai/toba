@@ -79,4 +79,31 @@ class NumuTenantMembershipVerifierTest {
         assertFalse(verifier.isActiveMember(UUID.randomUUID(), null).await().indefinitely());
         assertEquals(0, calls.get());
     }
+    @Test
+    void deniesNullMembershipResponse() {
+        TenantMembershipResolver resolver = (principal, tenant) -> null;
+        NumuTenantMembershipVerifier verifier = new NumuTenantMembershipVerifier();
+        verifier.membershipResolver = resolver;
+
+        assertFalse(verifier.isActiveMember(UUID.randomUUID(), UUID.randomUUID())
+                .await().indefinitely());
+    }
+
+    @Test
+    void deniesNullMembershipItem() {
+        TenantMembershipResolver resolver =
+                (principal, tenant) -> Uni.createFrom().nullItem();
+        NumuTenantMembershipVerifier verifier = new NumuTenantMembershipVerifier();
+        verifier.membershipResolver = resolver;
+
+        assertFalse(verifier.isActiveMember(UUID.randomUUID(), UUID.randomUUID())
+                .await().indefinitely());
+    }
+
+    @Test
+    void deniesUnavailableMembershipResolver() {
+        NumuTenantMembershipVerifier verifier = new NumuTenantMembershipVerifier();
+        assertFalse(verifier.isActiveMember(UUID.randomUUID(), UUID.randomUUID())
+                .await().indefinitely());
+    }
 }
