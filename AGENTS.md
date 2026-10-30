@@ -70,3 +70,11 @@ A feature is done only when its intended end-to-end behavior works through the p
 - What remains missing, and what should be implemented next?
 
 If any answer is unclear, say so explicitly and avoid readiness claims.
+
+## 9. Mermaid diagram maintenance
+
+- Read the [architecture diagram atlas](docs/architecture/diagrams/README.md) when changing engine boundaries, catalog authorization, query lifecycle, agent tools or deployment.
+- Update affected Mermaid diagrams in the same batch as architecture changes; preserve readable diagram IDs and labels.
+- Label target designs separately from implemented and integration-verified behavior.
+- Prefer source-controlled `mermaid` code blocks over static images; validate rendering when tooling is available.
+- Keep trust boundaries, denial branches, lifecycle transitions and bypass risks explicit.
