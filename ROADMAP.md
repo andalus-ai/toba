@@ -29,3 +29,7 @@ Every completed feature requires reproducible build; unit, integration and secur
 ## Delivery policy
 
 Prefer cohesive, reviewable batches over many small PRs. Keep a feature branch until its milestone is validated. Do not open a PR merely because several files were committed; obtain explicit user approval or follow the established consolidated-review checkpoint.
+
+## Visual roadmap and architecture
+
+Consult the [Mermaid architecture atlas](docs/architecture/diagrams/README.md) for system context, control/data plane, dependency direction, security flows, agent operations, query lifecycle and deployment. Diagrammed target capabilities must not be counted as delivered without validation evidence.
