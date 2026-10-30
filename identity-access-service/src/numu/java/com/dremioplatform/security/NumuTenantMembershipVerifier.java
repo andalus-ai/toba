@@ -19,13 +19,15 @@ public class NumuTenantMembershipVerifier implements TenantMembershipVerifier {
 
     @Override
     public Uni<Boolean> isActiveMember(UUID userId, UUID tenantId) {
-        if (userId == null || tenantId == null) {
+        if (userId == null || tenantId == null || membershipResolver == null) {
             return Uni.createFrom().item(false);
         }
         Principal principal = Principal.of(
                 PrincipalId.of(userId), userId.toString(), TenantId.of(tenantId));
-        return Uni.createFrom().deferred(() -> membershipResolver.isMember(principal, TenantId.of(tenantId)))
-                .onFailure().recoverWithItem(false)
+        return Uni.createFrom().deferred(() -> {
+            Uni<Boolean> result = membershipResolver.isMember(principal, TenantId.of(tenantId));
+            return result == null ? Uni.createFrom().item(false) : result;
+        }).onFailure().recoverWithItem(false)
                 .map(Boolean.TRUE::equals);
     }
 }
